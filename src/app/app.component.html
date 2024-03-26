@@ -1,0 +1,61 @@
+<body>
+  <div class="navbar">
+    <div class="toggle-button" (click)="toggleSidebar()">
+      &#9776;
+    </div>
+    导航栏
+  </div>
+  
+  <div class="container">
+    <div class="sidebar" id="sidebar">
+      <ul>
+<!--
+				<li>
+					<img src="images/bilibili.png" alt="" />
+					<span>哔哩哔哩 (゜-゜)つロ 干杯~-</span>
+				</li>
+-->
+				<li>
+					<a href="javascript:;" routerLink="/chat">
+						<i class="fa fa-home"></i>
+						<span>智能对话</span>
+					</a>
+				</li>
+				<li>
+					<a href="javascript:;">
+						<i class="fa fa-sitemap"></i>
+						<span>功能2</span>
+					</a>
+				</li>
+				<li>
+					<a href="javascript:;">
+						<i class="fa fa-user"></i>
+						<span>功能3</span>
+					</a>
+				</li>
+				<li>
+					<a href="javascript:;">
+						<i class="fa fa-shopping-cart"></i>
+						<span>功能4</span>
+					</a>
+				</li>
+				<li>
+					<a href="javascript:;">
+						<i class="fa fa-windows"></i>
+						<span>设置</span>
+					</a>
+				</li>
+			</ul>
+    </div>
+    <div class="chat-window" id="chatWindow">
+<!--      聊天窗口-->
+        <div class = "chatDiv">
+          <div>
+            <router-outlet></router-outlet>
+          </div>
+        </div>
+    </div>
+  </div>
+  
+ 
+</body>

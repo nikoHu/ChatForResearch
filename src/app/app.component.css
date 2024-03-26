@@ -1,0 +1,136 @@
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden; /* 隐藏垂直滚动条 */
+  }
+
+  .navbar {
+    display: flex;
+    align-items: center;
+    background-color: #333;
+    color: #fff;
+    padding: 10px;
+  }
+
+  .toggle-button {
+    cursor: pointer;
+    margin-right: 10px;
+  }
+
+  .container {
+    display: flex;
+    height: 100vh;
+  }
+
+  .sidebar {
+    width: 200px;
+    background-color: ghostwhite;
+    overflow: hidden;
+    transition: width 0.3s ease;
+  }
+
+  .chat-window {
+    flex-grow: 1;
+    background-color: #eaeaea;
+    padding: 20px;
+    transition: flex-grow 0.3s ease;
+  }
+
+  .collapsed .sidebar {
+    width: 60px;
+  }
+
+  .collapsed .chat-window {
+    flex-grow: 2;
+  }
+    
+/*    以下为侧边栏内容样式*/
+    .sidebar ul {
+/*	position: absolute;*/
+	top: 0;
+	left: 0;
+/*	width: 200px;*/
+	/* 高度占浏览器可视区域的高度 */
+/*	height: 100vh;*/
+	background-color: ghostwhite;
+	transition: all 0.5s;
+    margin: 0px;
+    list-style-type: none
+}
+.sidebar ul li {
+	width: 100%;
+	height: 50px;
+/*	margin-bottom: 10px;*/
+}
+
+.sidebar ul li a {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	height: 100%;
+	color: #d2d2d2;
+	/* 取消a标签的下划线 */
+	text-decoration: none;
+	/* 现在盒子内直接定义好左边框 不过颜色为透明色也就看不见 */
+/*	border-left: 6px solid transparent;*/
+}
+.sidebar ul li a i {
+	font-size: 28px;
+/*	margin: 0 15px;*/
+}
+.sidebar ul li a span {
+	font-size: 18px;
+    color: black
+}
+.sidebar ul li a:hover {
+	color: #fff;
+	/* 这样文字和图标会被带跑不太好看 解决办法很简单 */
+	/* 然后鼠标放上去变颜色就可以了 */
+/*	border-left-color: gray;*/
+    background-color: beige
+}
+.sidebar input:checked + label {
+	left: 0;
+}
+.sidebar input:checked + label i {
+	/* 沿着y轴旋转180度 */
+	transform: rotateY(180deg);
+}
+/*
+.sidebar input:checked ~ ul {
+	left: -200px;
+}
+*/
+    
+    
+/*    聊天窗口样式*/
+    .chat-window {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 95vh;
+  background-color: #eaeaea;
+/*  padding: 20px;*/
+}
+
+.chatDiv {
+  background-color: antiquewhite;
+/*  max-width: 60%;  初始宽度 */
+  width: 400px; /* 最小宽度 */
+  height: 90%;
+}
+
+/* 媒体查询，当 chat-window 的百分之 60 大于 400px 时，调整 chatDiv 的宽度 */
+@media (min-width: 800px) {
+/*
+  .chat-window {
+    padding: 20px 30%;  调整左右的留白 
+  }
+*/
+  
+  .chatDiv {
+    width: 70%;
+/*    max-width: 60%;*/
+  }
+}
