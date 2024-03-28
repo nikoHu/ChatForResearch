@@ -1,5 +1,4 @@
-import { Component, OnInit } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
+import { Component, OnInit, ViewChild, ElementRef, Renderer2 } from '@angular/core';
 
 @Component({
   selector: 'app-chat-page',
@@ -8,29 +7,47 @@ import { DomSanitizer } from '@angular/platform-browser';
 })
 export class ChatPageComponent implements OnInit {
 
-  constructor(private translateHtml:DomSanitizer) { }
+  @ViewChild('content', { static: false }) container: ElementRef;
+
+  constructor(private renderer: Renderer2) { }
 
   ngOnInit() {
   }
 
   send() {
     console.log("send");
-    let textInput = document.querySelector('#textarea') as HTMLInputElement; // 类型断言为 HTMLInputElement
+    let textInput = document.querySelector('#textarea') as HTMLInputElement;
     let text = textInput.value;
     if (!text) {
-        alert('请输入内容');
-        return;
+      alert('请输入内容');
+      return;
     }
-    let item = document.createElement('div');
+    let item = this.renderer.createElement('div');
     item.className = 'item item-right';
-    item.innerHTML = `<div class="bubble bubble-left">${text}</div><div class="avatar"><img src="./assets/profiles/1.jpg" /></div>`;
-    document.querySelector('.content').appendChild(item);
+
+    // Create bubble element
+    let bubble = this.renderer.createElement('div');
+    bubble.className = 'bubble bubble-left';
+    bubble.textContent = text;
+
+    // Create avatar element
+    let avatar = this.renderer.createElement('div');
+    avatar.className = 'avatar';
+    let img = this.renderer.createElement('img');
+    img.src = './assets/profiles/1.jpg';
+    avatar.appendChild(img);
+
+    // Append bubble and avatar to item
+    this.renderer.appendChild(item, bubble);
+    this.renderer.appendChild(item, avatar);
+
+    // Append item to content
+    this.renderer.appendChild(document.querySelector('.content'), item);
+
     textInput.value = '';
     textInput.focus();
-    //滚动条置底
+    // Scroll to bottom
     let height = document.querySelector('.content').scrollHeight;
     document.querySelector(".content").scrollTop = height;
-}
-
-
+  }
 }
