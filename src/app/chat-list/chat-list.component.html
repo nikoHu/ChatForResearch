@@ -1,0 +1,9 @@
+<ul class="menu w-full">
+  @for (chat of chats; track $index) {
+    <li>
+      <a [routerLink]="['/chat', chat.id]">
+        {{ chat.name }}
+      </a>
+    </li>
+  }
+</ul>

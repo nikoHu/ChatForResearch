@@ -1,0 +1,41 @@
+<div class="flex h-full w-full flex-col">
+  <div class="w-full rounded-2xl py-3 pl-3">
+    <select (change)="onSelectChange($event)" class="select select-bordered select-sm">
+      <option selected>ChatGLM3</option>
+      <option>Llama3</option>
+    </select>
+  </div>
+  <div
+    id="content"
+    (scroll)="onScroll($event)"
+    class="flex w-full grow flex-col overflow-auto border-y py-3 scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-500"
+  >
+    @for (message of messages; track message.id) {
+      @if (loading && message.content === '') {
+        <div class="px-7 py-3">
+          <span class="loading loading-spinner loading-md"></span>
+        </div>
+      } @else {
+        <markdown
+          clipboard
+          [class]="
+            (message.id % 2 === 0 ? 'ml-7 self-start bg-black/10' : 'mr-7 self-end bg-secondary text-white') +
+            ' prose my-5 h-fit max-w-[60%] rounded-2xl px-3 py-2'
+          "
+          [data]="message.content"
+        ></markdown>
+      }
+    }
+  </div>
+  <div
+    class="mx-auto my-5 flex h-28 w-[95%] flex-col rounded-lg border-2 focus-within:border-black focus:border-2 focus:border-black"
+  >
+    <textarea
+      class="textarea w-full resize-none rounded-lg border-none shadow-none scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-600 focus:resize-none focus:border-none focus:outline-0"
+      placeholder="Type your message here..."
+      [(ngModel)]="newMessage"
+      (keydown)="checkEnter($event)"
+    ></textarea>
+    <button (click)="sendMessage()" class="btn btn-sm bottom-0 my-2 mr-2 self-end">Send</button>
+  </div>
+</div>
