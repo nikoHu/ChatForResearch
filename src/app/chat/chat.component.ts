@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MarkdownModule } from 'ngx-markdown';
 import { ActivatedRoute } from '@angular/router';
 import { ChatService } from '../services/chat.service';
+import { GlobalStateService } from '../services/global-state.service';
 
 @Component({
   selector: 'chat',
@@ -17,11 +18,17 @@ export class Chat {
   newMessage = '';
   loading = false;
   userScrolled = false;
+  isOpen = false;
 
   constructor(
     private route: ActivatedRoute,
     private chatService: ChatService,
-  ) {}
+    private globalStateService: GlobalStateService,
+  ) {
+    this.globalStateService.isOpen$.subscribe((state) => {
+      this.isOpen = state;
+    });
+  }
 
   onScroll(event: Event) {
     const contentDiv = document.getElementById('content');
@@ -35,6 +42,10 @@ export class Chat {
       this.chatId = params.get('id');
       this.loadChatMessages(this.chatId);
     });
+  }
+
+  setIsOpen() {
+    this.globalStateService.setIsOpen();
   }
 
   loadChatMessages(chatId: string | null) {

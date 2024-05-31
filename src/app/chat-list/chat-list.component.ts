@@ -13,4 +13,14 @@ export class ChatList {
     { id: '1', name: 'Chat 1' },
     { id: '2', name: 'Chat 2' },
   ];
+
+  activeChatId = '';
+
+  setActive(id: string) {
+    this.activeChatId = id;
+  }
+
+  isActive(id: string) {
+    return this.activeChatId === id;
+  }
 }

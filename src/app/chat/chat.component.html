@@ -1,5 +1,17 @@
 <div class="flex h-full w-full flex-col">
-  <div class="w-full rounded-2xl py-3 pl-3">
+  <div class="flex w-full flex-row rounded-2xl py-3 pl-3">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="mr-3 size-8 cursor-pointer rounded-md stroke-black stroke-2 p-1 hover:bg-black/10"
+      [class]="isOpen ? 'block' : 'hidden'"
+      (click)="setIsOpen()"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
     <select (change)="onSelectChange($event)" class="select select-bordered select-sm">
       <option selected>ChatGLM3</option>
       <option>Llama3</option>
