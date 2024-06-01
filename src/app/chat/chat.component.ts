@@ -19,6 +19,8 @@ export class Chat {
   loading = false;
   userScrolled = false;
   isOpen = false;
+  historyLimit = 50;
+  temperature = 5;
 
   constructor(
     private route: ActivatedRoute,
@@ -106,10 +108,11 @@ export class Chat {
 
     this.messages.push({ id: botMessageId, content: '', role: 'assistant' });
 
+    const messages_length = this.messages.length;
     const requestData = {
-      messages: this.messages.slice(0, this.messages.length - 1),
+      messages: this.messages.slice(messages_length - this.historyLimit - 1, this.messages.length - 1),
       model: this.selectedModel,
-      temperature: 0.5,
+      temperature: this.temperature,
       stream: true,
     };
 
