@@ -1,0 +1,4 @@
+# Example
+
+chatglm3: 
+  path: "models/chatglm3-ggml.bin"
