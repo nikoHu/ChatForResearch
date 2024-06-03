@@ -9,7 +9,7 @@ import { GlobalStateService } from './services/global-state.service';
   imports: [ChatList, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="flex h-screen w-screen flex-row">
-      <div class="transition-width relative border-r bg-black/5 duration-300" [class]="isOpen ? 'w-0' : 'w-1/6'">
+      <div class="transition-width relative border-r bg-black/5 duration-300" [class]="isOpen ? 'w-0' : 'w-1/5'">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -23,7 +23,7 @@ import { GlobalStateService } from './services/global-state.service';
         </svg>
         <chat-list></chat-list>
       </div>
-      <div class="grow">
+      <div class="w-full">
         <router-outlet></router-outlet>
       </div>
     </div>
