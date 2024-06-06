@@ -37,9 +37,7 @@ export class ChatService {
                 break;
               }
               const chunk = decoder.decode(value, { stream: true });
-              const json_chunk = JSON.parse(chunk);
-              console.log(json_chunk);
-              observer.next(json_chunk.word);
+              observer.next(chunk);
             }
           }
         } catch (error) {

@@ -85,7 +85,6 @@ export class Chat {
 
   onSelectChange(event: any): void {
     this.selectedModel = event.target.value;
-    console.log(this.selectedModel);
   }
 
   sendMessage() {
@@ -115,8 +114,6 @@ export class Chat {
       temperature: this.temperature,
       stream: true,
     };
-
-    console.log(requestData);
 
     this.chatService.fetchPost(requestData).subscribe({
       next: (data) => {

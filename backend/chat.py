@@ -1,7 +1,5 @@
-import asyncio
-import yaml
 import chatglm_cpp
-import json
+import yaml
 
 from typing import List
 from fastapi import FastAPI, HTTPException
@@ -58,7 +56,7 @@ model = load_model()
 
 
 @app.post("/chat/completions")
-async def chat(body: ChatRequest):
+def chat(body: ChatRequest):
     """
     处理聊天请求并生成响应
     """
@@ -69,15 +67,12 @@ async def chat(body: ChatRequest):
     select_model = body.model
     temperature = body.temperature / 10
     stream = body.stream
-    print(messages, temperature)
 
     generation_kwargs = dict(temperature=temperature, stream=stream)
     messages = [chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages]
 
-    async def generate_response():
+    def generate_response():
         for message in model.chat(messages, **generation_kwargs):
-            json_response = json.dumps({"word": message.content})
-            yield json_response
-            await asyncio.sleep(0.001) 
+            yield message.content
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
