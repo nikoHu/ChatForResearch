@@ -1,15 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 import { MarkdownModule } from 'ngx-markdown';
 import { ActivatedRoute } from '@angular/router';
 import { ChatService } from '../services/chat.service';
-import { GlobalStateService } from '../services/global-state.service';
 
 @Component({
   selector: 'chat',
   templateUrl: './chat.component.html',
   standalone: true,
-  imports: [FormsModule, MarkdownModule],
+  imports: [FormsModule, MarkdownModule, NgClass],
 })
 export class Chat {
   messages: { id: number; content: string; role: string }[] = [];
@@ -18,19 +18,28 @@ export class Chat {
   newMessage = '';
   loading = false;
   userScrolled = false;
-  isOpen = false;
   historyLimit = 50;
   temperature = 5;
+
+  @ViewChild('textarea') textarea!: ElementRef<HTMLTextAreaElement>;
+  isFullStyle = true;
+
+  adjustTextarea() {
+    const textArea = this.textarea.nativeElement;
+    if (textArea.value === '') {
+      this.isFullStyle = true;
+    } else {
+      this.isFullStyle = false;
+    }
+    console.log(textArea.style.height);
+    textArea.style.height = 'auto';
+    textArea.style.height = textArea.scrollHeight + 'px';
+  }
 
   constructor(
     private route: ActivatedRoute,
     private chatService: ChatService,
-    private globalStateService: GlobalStateService,
-  ) {
-    this.globalStateService.isOpen$.subscribe((state) => {
-      this.isOpen = state;
-    });
-  }
+  ) {}
 
   onScroll(event: Event) {
     const contentDiv = document.getElementById('content');
@@ -44,10 +53,7 @@ export class Chat {
       this.chatId = params.get('id');
       this.loadChatMessages(this.chatId);
     });
-  }
-
-  setIsOpen() {
-    this.globalStateService.setIsOpen();
+    // this.adjustTextareaHeight();
   }
 
   loadChatMessages(chatId: string | null) {
@@ -74,6 +80,7 @@ export class Chat {
     if (event.key === 'Enter') {
       if (event.shiftKey) {
         // 允许换行
+        this.isFullStyle = false;
         return;
       } else {
         // 发送消息
@@ -88,16 +95,20 @@ export class Chat {
   }
 
   sendMessage() {
-    if (this.newMessage.trim()) {
+    const textArea = this.textarea.nativeElement;
+    if (this.newMessage) {
       this.messages.push({
         id: this.messages.length + 1,
-        content: this.newMessage,
+        content: this.newMessage.trim(),
         role: 'user',
       });
       this.streamMessages();
       this.userScrolled = false;
       this.newMessage = '';
+      textArea.style.height = 'auto';
+      this.isFullStyle = true;
     }
+    console.log(this.messages);
   }
 
   streamMessages() {

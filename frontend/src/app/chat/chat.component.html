@@ -1,17 +1,5 @@
 <div class="flex h-full w-full flex-col">
-  <div class="relative flex w-full flex-row rounded-2xl py-3 pl-3">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke-width="1.5"
-      stroke="currentColor"
-      class="mr-3 size-8 cursor-pointer rounded-md stroke-black stroke-2 p-1 hover:bg-black/10"
-      [class]="isOpen ? 'block' : 'hidden'"
-      (click)="setIsOpen()"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-    </svg>
+  <div class="relative flex w-full basis-1/12 flex-row rounded-2xl py-3 pl-3">
     <select (change)="onSelectChange($event)" class="select select-sm">
       <option selected>ChatGLM3</option>
       <option>Llama3</option>
@@ -68,7 +56,7 @@
   <div
     id="content"
     (scroll)="onScroll($event)"
-    class="flex w-full grow flex-col overflow-auto border-y py-3 scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-500"
+    class="flex w-full basis-10/12 flex-col overflow-auto border-t pt-3 scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-500"
   >
     @for (message of messages; track message.id) {
       @if (loading && message.content === '') {
@@ -76,26 +64,52 @@
           <span class="loading loading-spinner loading-md"></span>
         </div>
       } @else {
-        <markdown
-          clipboard
-          [class]="
-            (message.id % 2 === 0 ? 'ml-7 self-start bg-black/10' : 'mr-7 self-end bg-secondary text-white') +
-            ' prose my-5 h-fit max-w-[60%] rounded-2xl px-3 py-2'
-          "
-          [data]="message.content"
-        ></markdown>
+        @if (message.role === 'user') {
+          <!-- prettier-ignore -->
+          <div
+            class="my-5 mr-7 h-fit w-fit max-w-[60%] self-end whitespace-pre-wrap rounded-2xl bg-secondary px-3 py-2 text-base text-white"
+          >{{ message.content }}</div>
+        } @else {
+          <markdown
+            clipboard
+            class="prose my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-black/10 px-3 py-2 text-base"
+            [data]="message.content"
+          ></markdown>
+        }
       }
     }
   </div>
-  <div
-    class="mx-auto my-5 flex h-28 w-[95%] flex-col rounded-lg border-2 focus-within:border-black focus:border-2 focus:border-black"
-  >
-    <textarea
-      class="textarea w-full resize-none rounded-lg border-none shadow-none scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-600 focus:resize-none focus:border-none focus:outline-0"
-      placeholder="Type your message here..."
-      [(ngModel)]="newMessage"
-      (keydown)="checkEnter($event)"
-    ></textarea>
-    <button (click)="sendMessage()" class="btn btn-sm bottom-0 my-2 mr-2 self-end">Send</button>
+  <div class="mb-5 flex basis-1/12 items-center justify-center">
+    <div class="flex w-[80%] flex-row bg-black/5" [class]="isFullStyle ? 'rounded-full' : 'rounded-lg'">
+      <div class="flex w-[95%] items-center px-4 py-3">
+        <textarea
+          #textarea
+          rows="1"
+          class="box-border max-h-36 w-full resize-none overflow-auto bg-transparent text-base scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-400 focus:outline-none"
+          placeholder="Enter message..."
+          [(ngModel)]="newMessage"
+          (keydown)="checkEnter($event)"
+          (input)="adjustTextarea()"
+        ></textarea>
+      </div>
+      <div class="mx-2 items-center self-end pb-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          [class]="textarea.value ? 'cursor-pointer fill-blue-300 hover:fill-blue-500' : ''"
+          class="size-7 fill-black/20"
+          (click)="sendMessage()"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+          />
+        </svg>
+      </div>
+    </div>
   </div>
 </div>
