@@ -1,0 +1,81 @@
+<div class="flex h-full w-full flex-row items-center justify-center">
+  <div class="flex basis-1/2 flex-col self-start *:mx-auto *:my-5 *:w-4/5">
+    <label>
+      <span class="mb-2 block font-extrabold">提示词</span>
+      <textarea
+        rows="10"
+        class="textarea textarea-bordered block w-full resize-none"
+        placeholder="在这里写你的提示词..."
+      ></textarea>
+    </label>
+    <div class="flex h-fit items-center justify-between rounded-xl bg-black/5 px-3 py-2">
+      <span class="font-extrabold">变量</span>
+      <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-black/10">+ 添加</button>
+    </div>
+    <div class="flex h-fit items-center justify-between rounded-xl bg-black/5 px-3 py-2">
+      <span class="font-extrabold">知识库</span>
+      <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-black/10" onclick="knowledge.showModal()">
+        + 添加
+      </button>
+      <dialog id="knowledge" class="modal">
+        <div class="modal-box">
+          <h3 class="text-lg font-bold">选择引用知识库</h3>
+          <div class="modal-action">
+            <form method="dialog">
+              <button class="btn btn-sm">Close</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
+    </div>
+    <div class="flex h-fit flex-col rounded-xl bg-black/5 px-3 pb-4 pt-2">
+      <div class="mb-3 block font-extrabold">工具</div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
+          <div class="flex flex-row items-center justify-center space-x-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="inline size-4"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
+            </svg>
+            <span class="text-sm">联网搜索</span>
+          </div>
+          <input type="checkbox" class="toggle" />
+        </div>
+        <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
+          <div class="flex flex-row items-center justify-center space-x-1">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="inline size-4"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"
+              />
+            </svg>
+
+            <span class="text-sm">代码解释器</span>
+          </div>
+          <input type="checkbox" class="toggle" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="h-full basis-1/2 border-l">
+    <chat></chat>
+  </div>
+</div>
