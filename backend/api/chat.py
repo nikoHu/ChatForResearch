@@ -1,38 +1,11 @@
 import chatglm_cpp
 import yaml
 
-from typing import List
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
+from schemas.chat import Chat
 
-
-# 定义请求模型
-class Message(BaseModel):
-    id: int
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    messages: List[Message]
-    temperature: float
-    model: str
-    stream: bool
-
-
-# 初始化 FastAPI 应用
-app = FastAPI()
-
-# 配置 CORS 中间件
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
 
 
 def load_model():
@@ -55,18 +28,18 @@ def load_model():
 model = load_model()
 
 
-@app.post("/chat/completions")
-def chat(body: ChatRequest):
+@router.post("/completions")
+def chat(items: Chat):
     """
     处理聊天请求并生成响应
     """
     if not model:
         raise HTTPException(status_code=500, detail="Model is not loaded")
 
-    messages = body.messages
-    select_model = body.model
-    temperature = body.temperature / 10
-    stream = body.stream
+    messages = items.messages
+    select_model = items.model
+    temperature = items.temperature / 10
+    stream = items.stream
 
     generation_kwargs = dict(temperature=temperature, stream=stream)
     messages = [chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages]
