@@ -10,7 +10,7 @@
       viewBox="0 0 24 24"
       stroke-width="1.5"
       stroke="currentColor"
-      class="absolute right-0 mr-5 size-8 cursor-pointer rounded-md stroke-black stroke-2 p-1 hover:bg-black/10"
+      class="absolute right-0 mr-5 size-8 cursor-pointer rounded-md stroke-black stroke-2 p-1 hover:bg-neutral"
       onclick="my_modal.showModal()"
     >
       <path
@@ -67,12 +67,12 @@
         @if (message.role === 'user') {
           <!-- prettier-ignore -->
           <div
-            class="my-5 mr-7 h-fit w-fit max-w-[60%] self-end whitespace-pre-wrap rounded-2xl bg-secondary px-3 py-2 text-base text-white"
+            class="my-5 mr-7 h-fit w-fit max-w-[60%] self-end whitespace-pre-wrap rounded-2xl bg-primary px-3 py-2 text-base text-white"
           >{{ message.content }}</div>
         } @else {
           <markdown
             clipboard
-            class="prose my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-black/10 px-3 py-2 text-base"
+            class="prose my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-base-300 px-3 py-2 text-base"
             [data]="message.content"
           ></markdown>
         }
@@ -80,7 +80,7 @@
     }
   </div>
   <div class="mb-5 flex basis-1/12 items-center justify-center">
-    <div class="flex w-[80%] flex-row bg-black/5" [class]="isFullStyle ? 'rounded-full' : 'rounded-lg'">
+    <div class="flex w-[80%] flex-row bg-base-300" [class]="isFullStyle ? 'rounded-full' : 'rounded-lg'">
       <div class="flex w-[95%] items-center px-4 py-3">
         <textarea
           #textarea
