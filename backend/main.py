@@ -1,4 +1,4 @@
-from api import chat
+from api import chat, knowledge
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 
@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
+app.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
 
 if __name__ == "__main__":
     import uvicorn
