@@ -4,6 +4,7 @@ import { Home } from './home/home.component';
 import { Studio } from './studio/studio.component';
 import { Knowledge } from './knowledge/knowledge.component';
 import { KnowledgeList } from './knowledge/knowledge-list/knowledge-list.component';
+import { Upload } from './knowledge/upload/upload.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
@@ -12,7 +13,10 @@ export const routes: Routes = [
   {
     path: 'knowledge',
     component: Knowledge,
-    children: [{ path: '', component: KnowledgeList }],
+    children: [
+      { path: '', component: KnowledgeList },
+      { path: 'upload', component: Upload },
+    ],
   },
   { path: 'chat/:id', component: Chat },
 ];
