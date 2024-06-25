@@ -31,7 +31,6 @@ export class Chat {
     } else {
       this.isFullStyle = false;
     }
-    console.log(textArea.style.height);
     textArea.style.height = 'auto';
     textArea.style.height = textArea.scrollHeight + 'px';
   }
@@ -108,7 +107,6 @@ export class Chat {
       textArea.style.height = 'auto';
       this.isFullStyle = true;
     }
-    console.log(this.messages);
   }
 
   streamMessages() {
@@ -135,7 +133,6 @@ export class Chat {
         this.loading = false;
       },
       complete: () => {
-        console.log('Complete');
         this.loading = false;
       },
     });
