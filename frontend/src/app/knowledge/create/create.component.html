@@ -1,0 +1,32 @@
+<div class="flex h-full w-full flex-row">
+  <div class="flex basis-1/12 flex-col border-r py-6 pl-8">
+    <div class="mb-10 flex flex-row items-center space-x-2">
+      <div
+        class="cursor-pointer rounded-full p-2 shadow-md hover:outline hover:outline-1 hover:outline-blue-300"
+        (click)="goBack()"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-5 stroke-blue-300"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+        </svg>
+      </div>
+      <span class="text-sm font-bold">创建知识库</span>
+    </div>
+    <div>
+      <ul class="steps steps-vertical text-[12px] font-normal">
+        <li class="step step-info w-56">选择数据源</li>
+        <li class="step">分段与清洗</li>
+        <li class="step">处理并完成</li>
+      </ul>
+    </div>
+  </div>
+  <div class="basis-11/12">
+    <router-outlet></router-outlet>
+  </div>
+</div>

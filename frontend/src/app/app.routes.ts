@@ -4,6 +4,7 @@ import { Home } from './home/home.component';
 import { Studio } from './studio/studio.component';
 import { Knowledge } from './knowledge/knowledge.component';
 import { KnowledgeList } from './knowledge/knowledge-list/knowledge-list.component';
+import { Create } from './knowledge/create/create.component';
 import { Upload } from './knowledge/upload/upload.component';
 
 export const routes: Routes = [
@@ -15,7 +16,14 @@ export const routes: Routes = [
     component: Knowledge,
     children: [
       { path: '', component: KnowledgeList },
-      { path: 'upload', component: Upload },
+      {
+        path: 'create',
+        component: Create,
+        children: [
+          { path: '', redirectTo: 'upload', pathMatch: 'full' },
+          { path: 'upload', component: Upload },
+        ],
+      },
     ],
   },
   { path: 'chat/:id', component: Chat },
