@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { delay } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'upload',
@@ -105,7 +106,7 @@ export class Upload {
       formData.append('file', file);
 
       this.http
-        .post('http://localhost:8000/knowledge/upload', formData)
+        .post(`${environment.apiUrl}/knowledge/upload`, formData)
         .pipe(delay(2000))
         .subscribe({
           next: () => {
