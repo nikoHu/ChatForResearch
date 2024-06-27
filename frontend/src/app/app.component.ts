@@ -9,17 +9,17 @@ import { GlobalStateService } from './services/global-state.service';
   templateUrl: `./app.component.html`,
 })
 export class AppComponent {
-  title = 'ChatBot';
+  // title = 'ChatBot';
 
-  isOpen = false;
+  // isOpen = false;
 
-  constructor(private globalStateService: GlobalStateService) {
-    this.globalStateService.isOpen$.subscribe((state: boolean) => {
-      this.isOpen = state;
-    });
-  }
+  // constructor(private globalStateService: GlobalStateService) {
+  //   this.globalStateService.isOpen$.subscribe((state: boolean) => {
+  //     this.isOpen = state;
+  //   });
+  // }
 
-  setIsOpen() {
-    this.globalStateService.setIsOpen();
-  }
+  // setIsOpen() {
+  //   this.globalStateService.setIsOpen();
+  // }
 }
