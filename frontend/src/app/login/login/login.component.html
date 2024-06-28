@@ -6,13 +6,13 @@
             <label class="label">
               <span class="label-text">Username</span>
             </label>
-            <input type="username" placeholder="username" class="input input-bordered" required />
+            <input type="text" name="username" placeholder="username" [(ngModel)]="username" class="input input-bordered" />
           </div>
           <div class="form-control">
             <label class="label">
               <span class="label-text">Password</span>
             </label>
-            <input type="password" placeholder="password" class="input input-bordered" required />
+            <input type="password" name="password" placeholder="password" [(ngModel)]="password" class="input input-bordered" required />
             <label class="label">
               <a href="#" class="label-text-alt link link-hover">Forgot password?</a>
             </label>

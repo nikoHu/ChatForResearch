@@ -8,13 +8,14 @@ import { Create } from './main/knowledge/create/create.component';
 import { Upload } from './main/knowledge/upload/upload.component';
 import { LoginComponent } from './login/login/login.component';
 import { MainComponent } from './main/main.component';
+import { AuthGuardService } from './services/auth-guard.service';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
   {path:'',
    component: MainComponent,
-   canActivate: [],
+   canActivate: [AuthGuardService],
    children:[
     {path:'home', component: Home},
     { path: 'studio', component: Studio },
