@@ -8,7 +8,6 @@ import { Chat } from '../chat/chat.component';
   templateUrl: `./home.component.html`,
 })
 export class Home {
-  famousquotes = "立志当如山，如山般坚定！";
 
   famousQuotesList: string[] = ['立志当如山，如山般坚定！',
    '简单的事重复做，你就是专家；重复的事用心做，你就是赢家！',
@@ -27,9 +26,10 @@ export class Home {
    '一个人只要能忘我和爱别人，他在心理上就不会失衡，他就是一个幸福的人和完美的人。'
   ];
 
+  famousquotes = this.famousQuotesList[10];
+
   ngOnInit() {
     setInterval(() => {
-      console.log('Counter:');
     let randomNumber: any = Math.floor(Math.random() * this.famousQuotesList.length);
     this.famousquotes = this.famousQuotesList[randomNumber];
     }, 30000);
