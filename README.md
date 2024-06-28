@@ -13,6 +13,7 @@
 - **后端**:
   - [FastAPI](https://fastapi.tiangolo.com/): 用于构建API的现代、快速（高性能）Web框架，支持Python 3.6+。
   - [chatglm.cpp](https://github.com/li-plus/chatglm.cpp): ChatGLM的C++实现，与[llama.cpp](https://github.com/ggerganov/llama.cpp)工作方式相同
+  - [json-server](https://github.com/typicode/json-server): 当前登录使用的是模拟的方式，用json-server模拟后端用户信息接口
 
 ## 快速开始
 
@@ -46,13 +47,19 @@
     uvicorn main:app --reload
     ```
 
-2. **启动前端开发服务器:**
+2. **启动json-server用户信息服务**
+   ```
+   cd backend
+   json-server .\userInfo\user.json
+   ```
+
+3. **启动前端开发服务器:**
     ```sh
     cd frontend
     ng serve
     ```
 
-3. **访问应用程序:**
+4. **访问应用程序:**
     打开浏览器并导航到 `http://localhost:4200`。
 
 ### 开发计划
