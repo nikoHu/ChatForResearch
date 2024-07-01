@@ -8,3 +8,10 @@ __pycache__/
 
 # Model files
 *.bin
+
+models/*
+uploads/*
+user_info/*
+vector_dbs/*
+
+!.gitkeep
