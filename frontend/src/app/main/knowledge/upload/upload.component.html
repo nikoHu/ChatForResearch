@@ -1,5 +1,14 @@
 <div class="w-[45%] min-w-[500px] rounded-lg bg-white p-12">
-  <div class="mb-6 flex flex-wrap gap-2">
+  <div class="mb-10 space-y-2">
+    <div class="text-lg font-bold">知识库名称</div>
+    <input
+      required
+      [(ngModel)]="globalStateService.knowledgeName"
+      class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 transition-colors duration-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      placeholder="请输入知识库名称"
+    />
+  </div>
+  <div class="mb-3 flex flex-wrap gap-2">
     @for (option of options; track option.id) {
       <button
         (click)="selectedOption = option.id"
@@ -99,6 +108,8 @@
           : 'bg-blue-600 text-white hover:bg-blue-700') + ''
       "
       [disabled]="!uploadedFile || isUploading"
+      routerLink="../split"
+      (click)="this.globalStateService.steps[0] = true"
     >
       @if (isUploading) {
         <div class="flex items-center justify-center space-x-2">

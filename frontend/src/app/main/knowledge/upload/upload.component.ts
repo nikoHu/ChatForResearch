@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { delay } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { GlobalStateService } from '../../../services/global-state.service';
 
 @Component({
   selector: 'upload',
@@ -41,7 +42,10 @@ import { environment } from '../../../../environments/environment';
   ],
 })
 export class Upload {
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    public globalStateService: GlobalStateService,
+  ) {}
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('dropZone') dropZone!: ElementRef<HTMLDivElement>;
@@ -104,14 +108,16 @@ export class Upload {
 
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('knowledgeName', this.globalStateService.knowledgeName);
 
       this.http
         .post(`${environment.apiUrl}/knowledge/upload`, formData)
-        .pipe(delay(2000))
+        .pipe(delay(1000))
         .subscribe({
           next: () => {
             console.log('Upload complete');
             this.uploadedFile = file;
+            this.globalStateService.fileName = file.name;
             this.isUploading = false;
           },
           error: (error) => {

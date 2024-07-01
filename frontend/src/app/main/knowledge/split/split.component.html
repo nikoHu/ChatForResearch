@@ -1,0 +1,85 @@
+<div class="flex h-full w-full">
+  <!-- Left Panel -->
+  <div class="w-1/2 border-r px-6 py-4">
+    <h2 class="mb-4 text-xl font-bold">分段设置</h2>
+    <div class="rounded-md border p-4">
+      <div class="text-md mb-3 text-center font-semibold text-gray-600">自定义规则</div>
+      <div class="mb-4">
+        <label class="mb-1 block text-sm font-medium text-gray-700">分段标记符</label>
+        <input type="text" [(ngModel)]="separator" class="w-full rounded-md border bg-base-200 p-2 focus:bg-white" />
+      </div>
+      <div class="mb-4">
+        <label class="mb-1 block text-sm font-medium text-gray-700">分段最大长度</label>
+        <input type="number" [(ngModel)]="maxLength" class="w-full rounded-md border bg-base-200 p-2 focus:bg-white" />
+      </div>
+      <div class="mb-4">
+        <label class="mb-1 block text-sm font-medium text-gray-700">分段重叠长度</label>
+        <input
+          type="number"
+          [(ngModel)]="overlapLength"
+          class="w-full rounded-md border bg-base-200 p-2 focus:bg-white"
+        />
+      </div>
+      <div class="mb-4">
+        <h4 class="mb-2 text-sm font-medium text-gray-700">文本预处理规则</h4>
+        <div class="mb-2 flex items-center">
+          <input type="checkbox" [(ngModel)]="replaceSpaces" class="mr-2" />
+          <span class="text-sm">替换掉连续的空格、换行符和制表符</span>
+        </div>
+      </div>
+      <div class="mt-6 flex justify-start space-x-4">
+        <button
+          (click)="reset()"
+          class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition duration-300 ease-in-out hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+        >
+          重置
+        </button>
+        <button
+          (click)="preview()"
+          class="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        >
+          确认并预览
+        </button>
+      </div>
+    </div>
+    <div class="mt-6 flex justify-between">
+      <button
+        (click)="globalStateService.steps[0] = false"
+        routerLink="../upload"
+        class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition duration-300 ease-in-out hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+      >
+        上一步
+      </button>
+      <button
+        (click)="saveAndProcess()"
+        routerLink="../finish"
+        class="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+      >
+        保存并处理
+      </button>
+    </div>
+  </div>
+  <!-- Right Panel -->
+  <div class="flex h-full w-1/2 flex-col">
+    <div class="border-b p-4">
+      <h2 class="text-xl font-bold">分段预览</h2>
+    </div>
+    <div class="flex-grow overflow-auto p-4">
+      @if (segments.length > 0) {
+        <div class="space-y-6">
+          @for (segment of segments; track segment; let i = $index) {
+            <div class="rounded-xl bg-base-200 p-3">
+              <div class="mb-1 flex justify-between text-sm text-gray-500">
+                <span># {{ (i + 1).toString().padStart(3, '0') }}</span>
+                <span>{{ segment.charCount }} 字符</span>
+              </div>
+              <p class="text-sm">{{ segment.content }}</p>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-gray-500">没有可用的分段预览</p>
+      }
+    </div>
+  </div>
+</div>

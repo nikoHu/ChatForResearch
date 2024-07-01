@@ -21,8 +21,8 @@
     <div>
       <ul class="steps steps-vertical text-[12px] font-normal">
         <li class="step step-info w-56">选择数据源</li>
-        <li class="step">分段与清洗</li>
-        <li class="step">处理并完成</li>
+        <li class="step" [class]="globalStateService.steps[0] ? 'step-info' : ''">分段与清洗</li>
+        <li class="step" [class]="globalStateService.steps[1] ? 'step-info' : ''">处理并完成</li>
       </ul>
     </div>
   </div>

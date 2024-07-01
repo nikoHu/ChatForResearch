@@ -5,16 +5,8 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root',
 })
 export class GlobalStateService {
-  private isOpenSubject = new BehaviorSubject<boolean>(false);
-  isOpen$ = this.isOpenSubject.asObservable();
-
-  constructor() {}
-
-  setIsOpen() {
-    this.isOpenSubject.next(!this.isOpenSubject.value);
-  }
-
-  getIsOpen() {
-    return this.isOpenSubject.value;
-  }
+  knowledgeName: string = '';
+  fileName: string = '';
+  isBuilding: boolean = true;
+  steps: boolean[] = [false, false];
 }
