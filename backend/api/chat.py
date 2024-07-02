@@ -1,6 +1,7 @@
 import chatglm_cpp
 import yaml
 
+from functools import lru_cache
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from schemas.chat import Chat
@@ -8,6 +9,7 @@ from schemas.chat import Chat
 router = APIRouter()
 
 
+@lru_cache(maxsize=1)
 def load_model():
     """
     加载模型配置和模型实例
@@ -17,8 +19,7 @@ def load_model():
             config = yaml.safe_load(file)
 
         MODEL_PATH = config["chatglm3"]["path"]
-        model = chatglm_cpp.Pipeline(MODEL_PATH)
-        return model
+        return chatglm_cpp.Pipeline(MODEL_PATH)
     except Exception as e:
         print(f"Error loading model: {e}")
         return None
