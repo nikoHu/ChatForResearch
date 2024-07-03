@@ -1,14 +1,10 @@
 {
-  "users": [
-    {
-      "id": 1,
-      "username": "admin",
-      "password": "1234"
-    },
-    {
-      "id": 2,
-      "username": "user",
-      "password": "1234"
-    }
-  ]
+  "admin": {
+    "username": "admin",
+    "password": "1234"
+  },
+  "user": {
+    "username": "user",
+    "password": "1234"
+  }
 }
