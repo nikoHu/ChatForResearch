@@ -10,7 +10,7 @@ import { Split } from './main/knowledge/split/split.component';
 import { Finish } from './main/knowledge/finish/finish.component';
 import { LoginComponent } from './login/login/login.component';
 import { MainComponent } from './main/main.component';
-import { AuthGuardService } from './services/auth-guard.service';
+import { authGuard } from './services/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -18,7 +18,7 @@ export const routes: Routes = [
   {
     path: '',
     component: MainComponent,
-    canActivate: [AuthGuardService],
+    canActivate: [authGuard],
     children: [
       { path: 'home', component: Home },
       { path: 'studio', component: Studio },

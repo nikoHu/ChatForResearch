@@ -1,38 +1,33 @@
-import { Component, Inject } from '@angular/core';
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { Auth, User } from '../../domain/entities';
-import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [FormsModule],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  styleUrl: './login.component.css',
 })
 export class LoginComponent {
+  username = '';
+  password = '';
+  errorMessage = '';
 
-  auth: Auth = new Auth();
-  username = ''
-  password = ''
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
 
-  constructor(private router: Router, private service : AuthService){
-
+  onSubmit() {
+    this.errorMessage = '';
+    this.authService.login(this.username, this.password).subscribe({
+      next: () => this.router.navigate(['/home']),
+      error: (err) => {
+        console.error('Login failed', err);
+        this.errorMessage = err.error?.detail || 'Login failed';
+      },
+    });
   }
-
-  onClickLogin(){
-    console.log("click login", this.username, this.password);
-    this.service
-      .loginWithCredentials(this.username, this.password)
-      .subscribe((auth: Auth) => {
-        console.log(auth);
-        // let redirectUrl = (auth.redirectUrl === null)? '/': auth.redirectUrl;
-        this.auth = Object.assign({}, auth);
-        if (!auth.hasError) {
-          this.router.navigate(['home']);
-        }
-      });
-  }
-
 }

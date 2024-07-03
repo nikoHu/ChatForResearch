@@ -1,37 +1,48 @@
-<div class="hero bg-base-200 min-h-screen">
-    <div class="hero-content flex-col lg:flex-row-reverse">
-      <div class="card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl">
-        <form class="card-body">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Username</span>
-            </label>
-            <input type="text" name="username" placeholder="username" [(ngModel)]="username" class="input input-bordered" />
-          </div>
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Password</span>
-            </label>
-            <input type="password" name="password" placeholder="password" [(ngModel)]="password" class="input input-bordered" required />
-            <label class="label">
-              <a href="#" class="label-text-alt link link-hover">Forgot password?</a>
-            </label>
-          </div>
-          <div class="form-control mt-6">
-            <button class="btn btn-primary" (click)="onClickLogin()">Login</button>
-          </div>
-          <div>
-            <label class="label">
-                <a href="#" class="label-text-alt link link-hover">No Account? Register</a>
-            </label>
-          </div>
-        </form>
-      </div>
-      <div class="text-center lg:text-left">
-        <h1 class="text-5xl font-bold">Login now!</h1>
-        <p class="py-6">
-           在知识的海洋里，汲取营养，茁壮成长！让我们共同拥抱人工智能时代！向着星辰大海出发！
-        </p>
-      </div>
+<div class="hero min-h-screen bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse">
+    <div class="card w-full max-w-sm shrink-0 bg-base-100 shadow-2xl">
+      <form class="card-body">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Username</span>
+          </label>
+          <input
+            type="text"
+            name="username"
+            placeholder="username"
+            [(ngModel)]="username"
+            class="input input-bordered"
+          />
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Password</span>
+          </label>
+          <input
+            type="password"
+            name="password"
+            placeholder="password"
+            [(ngModel)]="password"
+            class="input input-bordered"
+            required
+          />
+          <label class="label">
+            <a href="#" class="link-hover link label-text-alt">Forgot password?</a>
+          </label>
+        </div>
+        <div class="form-control mt-6">
+          <button class="btn btn-primary" (click)="onSubmit()">Login</button>
+        </div>
+        <div>
+          <label class="label">
+            <a href="#" class="link-hover link label-text-alt">No Account? Register</a>
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold">Login now!</h1>
+      <p class="py-6">在知识的海洋里，汲取营养，茁壮成长！让我们共同拥抱人工智能时代！向着星辰大海出发！</p>
     </div>
   </div>
+</div>
