@@ -1,35 +1,40 @@
 <div class="flex h-screen w-screen flex-col">
-    <div class="navbar h-[5%] border-b bg-base-300">
-      <div class="dropdown">
-        <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
-          </svg>
-        </div>
-        <ul
-          tabindex="0"
-          class="menu dropdown-content menu-sm z-[1] mt-3 w-52 rounded-box bg-base-100 p-2 shadow *:text-base *:font-bold"
-        >
-          <li><a routerLink="/home">主页</a></li>
-          <li><a routerLink="/studio">工作室</a></li>
-          <li><a routerLink="/knowledge">知识库</a></li>
-        </ul>
+  <div class="navbar h-[5%] border-b bg-base-300">
+    <div class="dropdown">
+      <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+        </svg>
       </div>
-      <a
-        class="ml-5 mr-10 cursor-pointer bg-gradient-to-r from-blue-500 to-blue-300 bg-clip-text font-lato text-3xl font-extrabold text-transparent antialiased transition-shadow duration-300 hover:from-blue-600 hover:to-blue-400"
+      <ul
+        tabindex="0"
+        class="menu dropdown-content menu-sm z-[1] mt-3 w-52 rounded-box bg-base-100 p-2 shadow *:text-base *:font-bold"
       >
-        AI-Chat
-      </a>
-      <div class="navbar-start hidden lg:flex">
-        <ul class="menu menu-horizontal p-0 *:text-base *:font-bold">
-          <li><a routerLink="/home">主页</a></li>
-          <li><a routerLink="/studio">工作室</a></li>
-          <li><a routerLink="knowledge">知识库</a></li>
-        </ul>
-      </div>
+        <li><a routerLink="/home">主页</a></li>
+        <li><a routerLink="/studio">工作室</a></li>
+        <li><a routerLink="/knowledge">知识库</a></li>
+      </ul>
     </div>
-    <div class="h-[90%]">
-      <router-outlet></router-outlet>
+    <a
+      class="ml-5 mr-10 cursor-pointer bg-gradient-to-r from-blue-500 to-blue-300 bg-clip-text font-lato text-3xl font-extrabold text-transparent antialiased transition-shadow duration-300 hover:from-blue-600 hover:to-blue-400"
+    >
+      AI-Chat
+    </a>
+    <div class="navbar-start hidden lg:flex">
+      <ul class="menu menu-horizontal p-0 *:text-base *:font-bold">
+        <li><a routerLink="/home">主页</a></li>
+        <li><a routerLink="/studio">工作室</a></li>
+        <li><a routerLink="knowledge">知识库</a></li>
+      </ul>
     </div>
+    <button
+      (click)="logout()"
+      class="absolute right-5 transform rounded-lg bg-blue-100 px-4 py-2 font-medium text-blue-500 transition duration-300 ease-in-out hover:scale-105 hover:bg-blue-200"
+    >
+      退出
+    </button>
   </div>
-  
+  <div class="h-[90%]">
+    <router-outlet></router-outlet>
+  </div>
+</div>

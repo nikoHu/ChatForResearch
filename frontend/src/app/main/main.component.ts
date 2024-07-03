@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-main',
@@ -10,4 +11,20 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 })
 export class MainComponent {
   title = 'ChatBot';
+
+  username = '';
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
+
+  ngOnInit() {
+    this.username = this.authService.getUsername() || '';
+  }
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
 }
