@@ -42,7 +42,7 @@ BGEmbedding, weaviate_client = get_embedding_model_and_weaviate_clint()
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(), knowledgeName: str = Form()):
+async def upload_file(file: UploadFile = File(), knowledgeName: str = Form(), username: str = Form()):
     try:
         file_extension = Path(file.filename).suffix.lower()
         if file_extension not in ALLOWED_EXTENSIONS:
@@ -52,7 +52,7 @@ async def upload_file(file: UploadFile = File(), knowledgeName: str = Form()):
         if len(file_content) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="File too large")
 
-        folder_path = UPLOAD_DIRECTORY / knowledgeName
+        folder_path = UPLOAD_DIRECTORY / username / knowledgeName
         with suppress(FileExistsError):
             folder_path.mkdir(parents=True)
 
@@ -77,9 +77,9 @@ def get_file_content(file_path: str):
 
 
 def process_file(
-    knowledgeName: str, fileName: str, maxLength: int, overlapLength: int, replaceSpaces: bool, separator: str
+    knowledgeName: str, fileName: str, maxLength: int, overlapLength: int, replaceSpaces: bool, separator: str, username: str
 ):
-    file_path = UPLOAD_DIRECTORY / knowledgeName / fileName
+    file_path = UPLOAD_DIRECTORY / username / knowledgeName / fileName
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
@@ -106,6 +106,7 @@ async def preview_segments(
     overlapLength: int = Form(),
     replaceSpaces: bool = Form(),
     separator: str = Form(),
+    username: str = Form(),
 ):
     try:
         logger.info(
@@ -116,9 +117,10 @@ async def preview_segments(
             overlap_length=overlapLength,
             replace_spaces=replaceSpaces,
             separator=separator,
+            username=username,
         )
 
-        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator)
+        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username)
         contents = [content.page_content for content in texts]
 
         logger.info("preview_segments_success", segment_count=len(contents))
@@ -137,6 +139,7 @@ async def create_vector_db(
     overlapLength: int = Form(),
     replaceSpaces: bool = Form(),
     separator: str = Form(),
+    username: str = Form(),
 ):
     try:
         logger.info(
@@ -149,11 +152,37 @@ async def create_vector_db(
             separator=separator,
         )
 
-        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator)
-        db = WeaviateVectorStore.from_documents(texts, BGEmbedding, client=weaviate_client, index_name=knowledgeName)
-
+        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username)
+        db = WeaviateVectorStore.from_documents(texts, BGEmbedding, client=weaviate_client, index_name=f"{username}{knowledgeName}")
+        db.close()
         return {"message": "Vector DB created successfully"}
 
     except Exception as e:
         logger.error("create_vector_db_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/all-knowledges")
+async def get_all_knowledge(username: str = Form()):
+    try:
+        logger.info("get_all_knowledge_request", username=username)
+        knowledge_folders = [folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()]
+        logger.info("get_all_knowledge_success", knowledge_folders=knowledge_folders)
+        return {"message": "All knowledge fetched successfully", "knowledges": knowledge_folders}
+
+    except Exception as e:
+        logger.error("get_all_knowledge_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/all-files")
+async def get_all_files(knowledgeName: str = Form(), username: str = Form()):
+    try:
+        logger.info("get_all_files_request", knowledge_name=knowledgeName, username=username)
+        files = [file.name for file in (UPLOAD_DIRECTORY / username / knowledgeName).iterdir() if file.is_file()]
+        logger.info("get_all_files_success", files=files)
+        return {"message": "All files fetched successfully", "files": files}
+
+    except Exception as e:
+        logger.error("get_all_files_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))

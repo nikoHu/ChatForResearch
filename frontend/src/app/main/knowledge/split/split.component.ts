@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { delay } from 'rxjs/operators';
 import { GlobalStateService } from '../../../services/global-state.service';
 import { environment } from '../../../../environments/environment';
+import { AuthService } from '../../../services/auth.service';
 
 interface Segment {
   content: string;
@@ -23,11 +24,17 @@ export class Split {
   overlapLength = 10;
   replaceSpaces = true;
   segments: Segment[] = [];
+  username = '';
 
   constructor(
     private http: HttpClient,
     public globalStateService: GlobalStateService,
+    private authService: AuthService,
   ) {}
+
+  ngOnInit() {
+    this.username = this.authService.getUsername() || '';
+  }
 
   reset() {
     this.maxLength = 100;
@@ -41,6 +48,7 @@ export class Split {
     const formData = new FormData();
     formData.append('knowledgeName', this.globalStateService.knowledgeName);
     formData.append('fileName', this.globalStateService.fileName);
+    formData.append('username', this.username);
     formData.append('maxLength', this.maxLength.toString());
     formData.append('overlapLength', this.overlapLength.toString());
     formData.append('replaceSpaces', this.replaceSpaces.toString());

@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { delay } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { GlobalStateService } from '../../../services/global-state.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'upload',
@@ -45,6 +46,7 @@ export class Upload {
   constructor(
     private http: HttpClient,
     public globalStateService: GlobalStateService,
+    private authService: AuthService,
   ) {}
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
@@ -61,6 +63,11 @@ export class Upload {
   toastFading = false;
   isUploading = false;
   url = '';
+  username = '';
+
+  ngOnInit() {
+    this.username = this.authService.getUsername() || '';
+  }
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -109,6 +116,7 @@ export class Upload {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('knowledgeName', this.globalStateService.knowledgeName);
+      formData.append('username', this.username);
 
       this.http
         .post(`${environment.apiUrl}/knowledge/upload`, formData)
