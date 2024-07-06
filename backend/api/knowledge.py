@@ -1,48 +1,66 @@
+import json
 from pathlib import Path
-from fastapi import File, Form, UploadFile, HTTPException, APIRouter
+from uuid import UUID
 from functools import lru_cache
-from contextlib import suppress
+from typing import List, Dict, Any
+from contextlib import contextmanager
+
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
 
 import weaviate
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-from langchain_weaviate.vectorstores import WeaviateVectorStore
+from langchain_community.llms import ChatGLM
+from langchain.prompts import PromptTemplate
+from langchain.schema import StrOutputParser
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from weaviate.classes.config import Configure, Property, DataType, VectorDistances
+from weaviate.classes.query import MetadataQuery, Filter
 import structlog
 
 logger = structlog.get_logger()
 
-# 配置
+# Configuration constants
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
 UPLOAD_DIRECTORY = Path("uploads")
 VECTOR_DB_DIRECTORY = Path("vector_dbs")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+CHATGLM_ENDPOINT = "http://127.0.0.1:8000/chat/completions"
 
-# 确保目录存在
+# Ensure directories exist
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
 
 
-@lru_cache(maxsize=1)
-def get_embedding_model_and_weaviate_clint():
-    model_name = "./models/bge-large-zh-v1.5"
-    model_kwargs = {"device": "cuda"}
-    encode_kwargs = {"normalize_embeddings": True}
-    BGEmbedding = HuggingFaceBgeEmbeddings(
-        model_name=model_name, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs
-    )
-    weaviate_client = weaviate.connect_to_local()
-
-    return BGEmbedding, weaviate_client
+@contextmanager
+def get_weaviate_client():
+    client = weaviate.connect_to_local()
+    try:
+        yield client
+    finally:
+        client.close()
 
 
-BGEmbedding, weaviate_client = get_embedding_model_and_weaviate_clint()
+def get_llm():
+    return ChatGLM(endpoint_url=CHATGLM_ENDPOINT)
+
+
+class WeaviateJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            return str(obj)
+        if hasattr(obj, "__dict__"):
+            return obj.__dict__
+        return super().default(obj)
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(), knowledgeName: str = Form(), username: str = Form()):
+async def upload_file(
+    file: UploadFile = File(...), knowledgeName: str = Form(...), username: str = Form(...)
+):
     try:
         file_extension = Path(file.filename).suffix.lower()
         if file_extension not in ALLOWED_EXTENSIONS:
@@ -53,15 +71,15 @@ async def upload_file(file: UploadFile = File(), knowledgeName: str = Form(), us
             raise HTTPException(status_code=400, detail="File too large")
 
         folder_path = UPLOAD_DIRECTORY / username / knowledgeName
-        with suppress(FileExistsError):
-            folder_path.mkdir(parents=True)
+        folder_path.mkdir(parents=True, exist_ok=True)
 
         file_path = folder_path / file.filename
         if file_path.exists():
             logger.info("file_already_exists", path=str(file_path))
             return {"message": "File already exists", "path": str(file_path)}
 
-        file_path.write_bytes(file_content)
+        with open(file_path, "wb") as f:
+            f.write(file_content)
         logger.info("file_uploaded", path=str(file_path))
         return {"message": "File uploaded successfully", "path": str(file_path)}
 
@@ -70,43 +88,48 @@ async def upload_file(file: UploadFile = File(), knowledgeName: str = Form(), us
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@lru_cache(maxsize=32)
-def get_file_content(file_path: str):
-    with open(file_path, "r", encoding="utf-8") as f:
-        return f.read()
-
-
 def process_file(
-    knowledgeName: str, fileName: str, maxLength: int, overlapLength: int, replaceSpaces: bool, separator: str, username: str
-):
+    knowledgeName: str,
+    fileName: str,
+    maxLength: int,
+    overlapLength: int,
+    replaceSpaces: bool,
+    separator: str,
+    username: str,
+) -> List[Any]:
     file_path = UPLOAD_DIRECTORY / username / knowledgeName / fileName
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-
-    text = get_file_content(str(file_path))
-    if replaceSpaces:
-        text = text.replace("\n", " ").replace("\t", " ").replace("  ", " ")
 
     loader = TextLoader(str(file_path))
     documents = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=maxLength, chunk_overlap=overlapLength, separators=[separator], add_start_index=True
+        chunk_size=maxLength,
+        chunk_overlap=overlapLength,
+        separators=[separator],
+        add_start_index=True,
     )
     texts = text_splitter.split_documents(documents)
+
+    if replaceSpaces:
+        for text in texts:
+            text.page_content = (
+                text.page_content.replace("\n", " ").replace("\t", " ").replace("  ", " ")
+            )
 
     return texts
 
 
 @router.post("/preview-segments")
 async def preview_segments(
-    knowledgeName: str = Form(),
-    fileName: str = Form(),
-    maxLength: int = Form(),
-    overlapLength: int = Form(),
-    replaceSpaces: bool = Form(),
-    separator: str = Form(),
-    username: str = Form(),
+    knowledgeName: str = Form(...),
+    fileName: str = Form(...),
+    maxLength: int = Form(...),
+    overlapLength: int = Form(...),
+    replaceSpaces: bool = Form(...),
+    separator: str = Form(...),
+    username: str = Form(...),
 ):
     try:
         logger.info(
@@ -120,7 +143,9 @@ async def preview_segments(
             username=username,
         )
 
-        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username)
+        texts = process_file(
+            knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username
+        )
         contents = [content.page_content for content in texts]
 
         logger.info("preview_segments_success", segment_count=len(contents))
@@ -133,13 +158,13 @@ async def preview_segments(
 
 @router.post("/create-vector-db")
 async def create_vector_db(
-    knowledgeName: str = Form(),
-    fileName: str = Form(),
-    maxLength: int = Form(),
-    overlapLength: int = Form(),
-    replaceSpaces: bool = Form(),
-    separator: str = Form(),
-    username: str = Form(),
+    knowledgeName: str = Form(...),
+    fileName: str = Form(...),
+    maxLength: int = Form(...),
+    overlapLength: int = Form(...),
+    replaceSpaces: bool = Form(...),
+    separator: str = Form(...),
+    username: str = Form(...),
 ):
     try:
         logger.info(
@@ -152,9 +177,37 @@ async def create_vector_db(
             separator=separator,
         )
 
-        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username)
-        db = WeaviateVectorStore.from_documents(texts, BGEmbedding, client=weaviate_client, index_name=f"{username}{knowledgeName}")
-        db.close()
+        with get_weaviate_client() as weaviate_client:
+            collection_name = f"{username}{knowledgeName}"
+
+            if weaviate_client.collections.exists(collection_name):
+                logger.info("vector_db_already_exists")
+            else:
+                weaviate_client.collections.create(
+                    collection_name,
+                    properties=[
+                        Property(name="text", data_type=DataType.TEXT),
+                        Property(name="source", data_type=DataType.TEXT),
+                    ],
+                    vectorizer_config=Configure.Vectorizer.text2vec_transformers(),
+                    vector_index_config=Configure.VectorIndex.hnsw(
+                        distance_metric=VectorDistances.COSINE
+                    ),
+                )
+
+            texts = process_file(
+                knowledgeName,
+                fileName,
+                maxLength,
+                overlapLength,
+                replaceSpaces,
+                separator,
+                username,
+            )
+            texts_obj = [{"text": text.page_content, "source": fileName} for text in texts]
+            knowledge = weaviate_client.collections.get(collection_name)
+            knowledge.data.insert_many(texts_obj)
+
         return {"message": "Vector DB created successfully"}
 
     except Exception as e:
@@ -163,10 +216,12 @@ async def create_vector_db(
 
 
 @router.post("/all-knowledges")
-async def get_all_knowledge(username: str = Form()):
+async def get_all_knowledge(username: str = Form(...)):
     try:
         logger.info("get_all_knowledge_request", username=username)
-        knowledge_folders = [folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()]
+        knowledge_folders = [
+            folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()
+        ]
         logger.info("get_all_knowledge_success", knowledge_folders=knowledge_folders)
         return {"message": "All knowledge fetched successfully", "knowledges": knowledge_folders}
 
@@ -175,14 +230,237 @@ async def get_all_knowledge(username: str = Form()):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/delete-knowledge")
+async def delete_knowledge(knowledgeName: str = Form(...), username: str = Form(...)):
+    try:
+        logger.info("delete_knowledge_request", knowledge_name=knowledgeName, username=username)
+        knowledge_path = UPLOAD_DIRECTORY / username / knowledgeName
+        if not knowledge_path.exists():
+            raise HTTPException(status_code=404, detail=f"Knowledge not found: {knowledge_path}")
+        for file in knowledge_path.iterdir():
+            file.unlink()
+        knowledge_path.rmdir()
+
+        with get_weaviate_client() as weaviate_client:
+            collection_name = f"{username}{knowledgeName}"
+            if weaviate_client.collections.exists(collection_name):
+                weaviate_client.collections.delete(collection_name)
+
+        logger.info("delete_knowledge_success", knowledge_path=str(knowledge_path))
+        return {"message": "Knowledge deleted successfully"}
+
+    except Exception as e:
+        logger.error("delete_knowledge_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/all-files")
-async def get_all_files(knowledgeName: str = Form(), username: str = Form()):
+async def get_all_files(knowledgeName: str = Form(...), username: str = Form(...)):
     try:
         logger.info("get_all_files_request", knowledge_name=knowledgeName, username=username)
-        files = [file.name for file in (UPLOAD_DIRECTORY / username / knowledgeName).iterdir() if file.is_file()]
+        files = [
+            file
+            for file in (UPLOAD_DIRECTORY / username / knowledgeName).iterdir()
+            if file.is_file()
+        ]
+        files_dict = [
+            {"name": file.name, "size": file.stat().st_size, "time": file.stat().st_mtime}
+            for file in files
+        ]
         logger.info("get_all_files_success", files=files)
-        return {"message": "All files fetched successfully", "files": files}
+        return {"message": "All files fetched successfully", "files": files_dict}
 
     except Exception as e:
         logger.error("get_all_files_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/delete-file")
+async def delete_file(
+    knowledgeName: str = Form(...), fileName: str = Form(...), username: str = Form(...)
+):
+    try:
+        logger.info(
+            "delete_file_request",
+            knowledge_name=knowledgeName,
+            file_name=fileName,
+            username=username,
+        )
+        file_path = UPLOAD_DIRECTORY / username / knowledgeName / fileName
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+        file_path.unlink()
+
+        with get_weaviate_client() as weaviate_client:
+            collection_name = f"{username}{knowledgeName}"
+            if weaviate_client.collections.exists(collection_name):
+                collection = weaviate_client.collections.get(collection_name)
+                collection.data.delete_many(where=Filter.by_property("source").equal(fileName))
+
+        logger.info("delete_file_success", file_path=str(file_path))
+        return {"message": "File deleted successfully"}
+
+    except Exception as e:
+        logger.error("delete_file_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/recall")
+async def recall(
+    selectedKnowledgeName: str = Form(...),
+    username: str = Form(...),
+    query: str = Form(...),
+    index_mode: str = Form(...),
+    limit: int = Form(...),
+    certainty: float = Form(None),
+):
+    try:
+        logger.info(
+            "recall_request",
+            knowledge_name=selectedKnowledgeName,
+            username=username,
+            query=query,
+            limit=limit,
+            certainty=certainty,
+            index_mode=index_mode,
+        )
+
+        with get_weaviate_client() as weaviate_client:
+            collection = weaviate_client.collections.get(f"{username}{selectedKnowledgeName}")
+
+            if index_mode == "vector":
+                if certainty is None:
+                    raise HTTPException(
+                        status_code=400, detail="Certainty is required for vector search"
+                    )
+                response = collection.query.near_text(
+                    certainty=certainty,
+                    query=query,
+                    limit=limit,
+                    return_metadata=MetadataQuery(certainty=True),
+                )
+            elif index_mode == "full-text":
+                response = collection.query.bm25(
+                    query=query, limit=limit, return_metadata=MetadataQuery(score=True)
+                )
+            elif index_mode == "hybrid":
+                if certainty is None:
+                    raise HTTPException(
+                        status_code=400, detail="Certainty is required for hybrid search"
+                    )
+                response = collection.query.hybrid(
+                    query=query, alpha=0.75, return_metadata=MetadataQuery(score=True), limit=limit
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Invalid index_mode")
+
+            logger.info("recall_success")
+            response_data = json.loads(json.dumps(response.objects, cls=WeaviateJSONEncoder))
+        return JSONResponse(content={"message": "Recall success", "query_result": response_data})
+
+    except Exception as e:
+        logger.error("recall_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat_with_knowledge")
+def chat_with_knowledge(
+    selectedKnowledgeName: str = Form(...),
+    username: str = Form(...),
+    query: str = Form(...),
+    history: str = Form(...),
+):
+    logger.info(
+        "chat_with_knowledge_request",
+        knowledge_name=selectedKnowledgeName,
+        username=username,
+        query=query,
+    )
+
+    history = json.loads(history)
+
+    def generate_response():
+        try:
+            with get_weaviate_client() as weaviate_client:
+                collection = weaviate_client.collections.get(f"{username}{selectedKnowledgeName}")
+
+                def retrieve(query: str) -> List[str]:
+                    response = collection.query.near_text(
+                        query=query,
+                        limit=2,
+                    )
+                    return [obj.properties["text"] for obj in response.objects]
+
+                def format_history(history: List[Dict[str, str]]) -> str:
+                    return "\n".join(
+                        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-3:]]
+                    )
+
+                judge_prompt = PromptTemplate.from_template(
+                    "你是一个智能助手。你的任务是判断是否绝对需要额外的信息来回答用户的问题。"
+                    "只有在问题明确要求特定信息且你无法基于常识回答时，才输出True。对于问候、闲聊或一般性问题，请输出False。\n\n"
+                    "对话历史：\n{history}\n\n当前问题：{question}\n\n"
+                    "是否绝对需要额外信息来回答这个问题？请只回答 True 或 False。"
+                )
+
+                initial_answer_prompt = PromptTemplate.from_template(
+                    "你是一个友好的聊天助手。请根据对话历史和当前问题进行回答。"
+                    "如果是问候或闲聊，请做出适当的回应。如果你不确定或需要更多信息，请诚实地说出来。\n\n"
+                    "对话历史：\n{history}\n\n当前问题：{question}\n\n请给出初步回答："
+                )
+
+                final_answer_prompt = PromptTemplate.from_template(
+                    "你是一个智能助手。请根据提供的信息回答用户的问题。如果有额外上下文，请使用它来补充你的回答。"
+                    "保持回答简洁明了，并确保回答与问题直接相关。\n\n"
+                    "对话历史：\n{history}\n\n当前问题：{question}\n"
+                    "初步回答：{initial_answer}\n额外上下文：{context}\n\n请给出最终回答："
+                )
+
+                llm = get_llm()
+
+                def rag_chain_with_history(query: str, history: List[Dict[str, str]]):
+                    formatted_history = format_history(history)
+
+                    # 判断是否需要检索信息
+                    judge_chain = judge_prompt | llm | StrOutputParser()
+                    need_retrieval = (
+                        judge_chain.invoke({"history": formatted_history, "question": query})
+                        .strip()
+                        .lower()
+                        == "true"
+                    )
+
+                    # 生成初步回答
+                    initial_answer_chain = initial_answer_prompt | llm | StrOutputParser()
+                    initial_answer = initial_answer_chain.invoke(
+                        {"history": formatted_history, "question": query}
+                    )
+
+                    # 如果需要检索，则获取上下文并生成最终回答
+                    if need_retrieval:
+                        context = "\n".join(retrieve(query))
+                        final_answer_chain = final_answer_prompt | llm | StrOutputParser()
+                        result = final_answer_chain.invoke(
+                            {
+                                "history": formatted_history,
+                                "question": query,
+                                "initial_answer": initial_answer,
+                                "context": context,
+                            }
+                        )
+                    else:
+                        result = initial_answer
+
+                    return result
+
+                response_chain = RunnableLambda(lambda x: rag_chain_with_history(x, history))
+
+                for chunk in response_chain.stream(query):
+                    print(chunk, end="", flush=True)
+                    yield chunk
+
+        except Exception as e:
+            logger.error("chat_with_knowledge_error", error=str(e))
+            yield f"An error occurred: {str(e)}"
+
+    return StreamingResponse(generate_response(), media_type="text/event-stream")

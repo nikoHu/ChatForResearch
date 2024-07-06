@@ -1,10 +1,12 @@
-import chatglm_cpp
 import yaml
+import logging
+import chatglm_cpp
 
 from functools import lru_cache
-from fastapi import APIRouter, HTTPException
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
-from schemas.chat import Chat
+from schemas.chat import Chat, ChatRequest, ChatResponse
 
 router = APIRouter()
 
@@ -29,7 +31,7 @@ def load_model():
 model = load_model()
 
 
-@router.post("/completions")
+@router.post("/")
 def chat(items: Chat):
     """
     处理聊天请求并生成响应
@@ -43,10 +45,40 @@ def chat(items: Chat):
     stream = items.stream
 
     generation_kwargs = dict(temperature=temperature, stream=stream)
-    messages = [chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages]
+    messages = [
+        chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages
+    ]
 
     def generate_response():
         for message in model.chat(messages, **generation_kwargs):
             yield message.content
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
+
+
+@router.post("/completions")
+async def chat(body: ChatRequest) -> ChatResponse:
+    messages = []
+    for prompt, response in body.history:
+        messages += [
+            chatglm_cpp.ChatMessage(role="user", content=prompt),
+            chatglm_cpp.ChatMessage(role="assistant", content=response),
+        ]
+    messages.append(chatglm_cpp.ChatMessage(role="user", content=body.prompt))
+
+    output = model.chat(
+        messages,
+        max_length=body.max_length,
+        do_sample=body.temperature > 0,
+        top_p=body.top_p,
+        temperature=body.temperature,
+    )
+    history = body.history + [(body.prompt, output.content)]
+    answer = ChatResponse(
+        response=output.content,
+        history=history,
+        status=status.HTTP_200_OK,
+        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    )
+    logging.info(f'prompt: "{body.prompt}", response: "{output.content}"')
+    return answer
