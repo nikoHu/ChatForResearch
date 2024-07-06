@@ -1,0 +1,153 @@
+<div class="flex h-full w-full">
+  <div class="flex w-1/2 flex-col border-r px-8 pt-4">
+    <div class="mb-4 w-full">
+      <h2 class="text-xl font-bold">召回测试</h2>
+      <p class="mb-4 text-gray-600">基于给定的查询文本测试知识库的召回效果</p>
+      <div class="mx-auto">
+        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div class="relative">
+            <textarea
+              class="h-48 w-full resize-none rounded-md border-0 bg-white px-3 py-2 text-gray-700 transition duration-200 focus:outline-none focus:ring-0"
+              placeholder="请输入测试文本..."
+              [(ngModel)]="query"
+              maxlength="200"
+            ></textarea>
+            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between text-sm">
+              <span class="text-gray-500">{{ query.length }} / 200</span>
+              <button
+                (click)="handleSubmit()"
+                [disabled]="!query"
+                [ngClass]="{ 'cursor-not-allowed opacity-50': !query, 'hover:bg-blue-600': query }"
+                class="flex items-center rounded-md bg-blue-500 px-4 py-2 font-medium text-white shadow-sm transition duration-300 ease-in-out"
+              >
+                测试
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="w-full">
+      <h2 class="mb-3 text-xl font-bold">索引设置</h2>
+      <div class="space-y-3">
+        @for (searchType of searchTypes; track searchType.type) {
+          <div
+            class="cursor-pointer rounded-lg border border-gray-200 p-4"
+            [class.bg-blue-50]="activeSearchType === searchType.type"
+            [class.bg-white]="activeSearchType !== searchType.type"
+            [class.hover:bg-gray-50]="activeSearchType !== searchType.type"
+            (click)="setActiveSearchType(searchType.type)"
+          >
+            <div class="mb-2 flex items-center justify-between">
+              <span class="font-semibold">{{ searchType.title }}</span>
+              <div
+                class="h-6 w-6 rounded-full border-2"
+                [class.border-blue-500]="activeSearchType === searchType.type"
+                [class.border-gray-300]="activeSearchType !== searchType.type"
+              >
+                @if (activeSearchType === searchType.type) {
+                  <div class="m-auto mt-0.5 h-4 w-4 rounded-full bg-blue-500"></div>
+                }
+              </div>
+            </div>
+            <p class="text-sm text-gray-600">{{ searchType.description }}</p>
+            @if (activeSearchType === searchType.type) {
+              <div class="mt-4 space-y-4">
+                @if (searchType.type === 'vector' || searchType.type === 'hybrid') {
+                  <div>
+                    <div class="mb-2">
+                      <span class="font-medium">Rerank 模型</span>
+                    </div>
+                    <select
+                      [(ngModel)]="rerankModelType"
+                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+                    >
+                      <option value="model1">模型 1</option>
+                      <option value="model2">模型 2</option>
+                      <option value="model3">模型 3</option>
+                    </select>
+                  </div>
+                }
+                <div>
+                  <div class="mb-2 flex justify-between">
+                    <span>Top K</span>
+                    <span class="font-semibold">
+                      @switch (searchType.type) {
+                        @case ('vector') {
+                          {{ vectorTopK }}
+                        }
+                        @case ('full-text') {
+                          {{ fullTextTopK }}
+                        }
+                        @case ('hybrid') {
+                          {{ hybridTopK }}
+                        }
+                      }
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    [ngModel]="
+                      searchType.type === 'vector'
+                        ? vectorTopK
+                        : searchType.type === 'full-text'
+                          ? fullTextTopK
+                          : hybridTopK
+                    "
+                    (ngModelChange)="
+                      searchType.type === 'vector'
+                        ? (vectorTopK = $event)
+                        : searchType.type === 'full-text'
+                          ? (fullTextTopK = $event)
+                          : (hybridTopK = $event)
+                    "
+                    min="1"
+                    max="10"
+                    step="1"
+                    class="w-full"
+                  />
+                </div>
+                @if (searchType.type === 'vector' || searchType.type === 'hybrid') {
+                  <div>
+                    <div class="mb-2 flex justify-between">
+                      <span>Score 阈值</span>
+                      <span class="font-semibold">
+                        {{ searchType.type === 'vector' ? vectorScoreThreshold : hybridScoreThreshold }}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      [ngModel]="searchType.type === 'vector' ? vectorScoreThreshold : hybridScoreThreshold"
+                      (ngModelChange)="
+                        searchType.type === 'vector' ? (vectorScoreThreshold = $event) : (hybridScoreThreshold = $event)
+                      "
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      class="w-full"
+                    />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+  <div class="flex h-full w-1/2 flex-col">
+    <div class="sticky top-0 border-b bg-white p-4">
+      <h2 class="text-xl font-bold">分段预览</h2>
+    </div>
+    <div class="space-y-4 overflow-auto p-4">
+      @for (segment of results; track segment; let i = $index) {
+        <div class="rounded-xl bg-base-200 p-3">
+          <div class="mb-1 text-sm text-gray-500">
+            <span>score {{ segment.score }} </span>
+          </div>
+          <p class="text-sm">{{ segment.text }}</p>
+        </div>
+      }
+    </div>
+  </div>
+</div>

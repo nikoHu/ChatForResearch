@@ -1,0 +1,33 @@
+<div class="flex h-full font-sans text-sm">
+  <!-- Sidebar -->
+  <div class="flex min-w-60 flex-col border-r px-5 py-6">
+    <div class="mb-5 flex items-center">
+      <div class="flex items-center justify-center space-x-1 rounded-lg bg-blue-50 px-2 py-1.5">
+        <lucide-icon name="folder-closed" class="text-blue-600" [size]="25"></lucide-icon>
+        <div class="text-xl font-bold">{{ name }}</div>
+      </div>
+    </div>
+    <nav class="space-y-1">
+      <a
+        [routerLink]="['files']"
+        routerLinkActive="bg-blue-50 text-blue-600"
+        class="flex cursor-pointer items-center rounded-md px-4 py-2 font-medium hover:bg-gray-100"
+      >
+        <lucide-icon name="file-text" class="mr-2" [size]="16"></lucide-icon>
+        文档
+      </a>
+      <a
+        [routerLink]="['recall']"
+        routerLinkActive="bg-blue-50 text-blue-600"
+        class="flex cursor-pointer items-center rounded-md px-4 py-2 font-medium hover:bg-gray-100"
+      >
+        <lucide-icon name="zap" class="mr-2" [size]="16"></lucide-icon>
+        召回测试
+      </a>
+    </nav>
+  </div>
+
+  <div class="flex-auto">
+    <router-outlet></router-outlet>
+  </div>
+</div>

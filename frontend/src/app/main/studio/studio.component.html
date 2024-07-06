@@ -1,5 +1,5 @@
 <div class="flex h-full w-full flex-row items-center justify-center">
-  <div class="flex basis-1/2 flex-col self-start *:mx-auto *:my-5 *:w-4/5">
+  <div class="flex w-1/2 flex-col self-start *:mx-auto *:my-5 *:w-4/5">
     <label>
       <span class="mb-2 block font-extrabold">提示词</span>
       <textarea
@@ -12,17 +12,64 @@
       <span class="font-extrabold">变量</span>
       <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral">+ 添加</button>
     </div>
-    <div class="flex h-fit items-center justify-between rounded-xl bg-base-200 px-3 py-2">
-      <span class="font-extrabold">知识库</span>
-      <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral" onclick="knowledge.showModal()">
-        + 添加
-      </button>
+    <div class="flex h-fit flex-col items-center justify-between rounded-xl bg-base-200 px-3 py-2">
+      <div class="flex w-full flex-row justify-between">
+        <div class="font-extrabold">知识库</div>
+        <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral" onclick="knowledge.showModal()">
+          + 添加
+        </button>
+      </div>
+      @if (selectedKnowledgeName) {
+        <div class="my-2 flex w-full flex-col space-y-2">
+          <div class="flex flex-row items-center justify-between rounded-lg border bg-white px-5 py-2 shadow-sm">
+            <span>{{ selectedKnowledgeName }}</span>
+            <lucide-icon
+              name="trash-2"
+              class="cursor-pointer text-blue-500"
+              [size]="20"
+              (click)="selectKnowledge('')"
+            ></lucide-icon>
+          </div>
+        </div>
+      }
       <dialog id="knowledge" class="modal">
         <div class="modal-box">
-          <h3 class="text-lg font-bold">选择引用知识库</h3>
+          <h3 class="mb-5 text-lg font-bold">选择引用知识库</h3>
+          @for (item of knowledges; track item) {
+            <div
+              class="mb-2 flex cursor-pointer items-center justify-between rounded-lg border p-3"
+              [class.bg-blue-50]="selectedKnowledgeName === item"
+              (click)="selectKnowledge(item)"
+              [class.hover:bg-blue-50]="selectedKnowledgeName !== item"
+            >
+              <div class="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  [class.text-blue-500]="selectedKnowledgeName === item"
+                  [class.text-gray-400]="selectedKnowledgeName !== item"
+                  class="mr-2"
+                >
+                  <path
+                    d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"
+                  ></path>
+                </svg>
+                <span class="text-sm">{{ item }}</span>
+              </div>
+            </div>
+          }
           <div class="modal-action">
             <form method="dialog">
-              <button class="btn btn-sm">Close</button>
+              <div class="mt-4 flex justify-end space-x-2">
+                <button class="rounded bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600">Close</button>
+              </div>
             </form>
           </div>
         </div>
@@ -75,7 +122,7 @@
       </div>
     </div>
   </div>
-  <div class="h-full basis-1/2 border-l">
+  <div class="h-full w-1/2 border-l">
     <chat></chat>
   </div>
 </div>

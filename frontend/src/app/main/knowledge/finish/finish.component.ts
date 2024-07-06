@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { GlobalStateService } from '../../../services/global-state.service';
 
 @Component({
@@ -9,5 +9,13 @@ import { GlobalStateService } from '../../../services/global-state.service';
   templateUrl: './finish.component.html',
 })
 export class Finish {
-  constructor(public globalStateService: GlobalStateService) {}
+  constructor(
+    private router: Router,
+    public globalStateService: GlobalStateService,
+  ) {}
+
+  next() {
+    this.globalStateService.steps = [false, false];
+    this.router.navigate([`/knowledge/${this.globalStateService.knowledgeName}/files`]);
+  }
 }

@@ -6,10 +6,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root',
 })
 export class ChatService {
-  constructor() {}
-
   fetchPost(requestData: object): Observable<string> {
-    const url = `${environment.apiUrl}/chat/completions`;
+    const url = `${environment.apiUrl}/chat/`;
 
     return new Observable((observer) => {
       const fetchData = async () => {

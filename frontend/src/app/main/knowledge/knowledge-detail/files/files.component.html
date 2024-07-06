@@ -1,0 +1,52 @@
+<div class="px-8 pt-4">
+  <h1 class="mb-6 text-xl">文档</h1>
+  <div class="mb-5 flex flex-row items-center justify-between">
+    <div class="w-64">
+      <input
+        type="text"
+        placeholder="搜索"
+        class="w-full rounded-lg border bg-gray-100 py-2 pl-3 pr-10 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="search()"
+      />
+    </div>
+    <button
+      class="flex items-center rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition duration-300 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+    >
+      <lucide-icon name="plus" class="mr-1" [size]="16"></lucide-icon>
+      添加文件
+    </button>
+  </div>
+  <table class="w-full table-auto">
+    <thead>
+      <tr class="border-b text-left text-xs text-gray-500">
+        <th class="pb-2 font-medium">#</th>
+        <th class="pb-2 font-medium">文件名</th>
+        <th class="pb-2 font-medium">字符数</th>
+        <!-- <th class="pb-2 font-medium">上传时间</th> -->
+        <th class="pb-2 font-medium">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (file of filteredFiles; track file.id) {
+        <tr class="border-b hover:bg-gray-50">
+          <td class="py-3">{{ file.id }}</td>
+          <td class="flex items-center py-3">
+            <lucide-icon name="file-text" class="mr-2 text-gray-400" [size]="16"></lucide-icon>
+            {{ file.name }}
+          </td>
+          <td class="py-3">{{ file.characterCount }}</td>
+          <!-- <td class="py-3">{{ file.uploadTime }}</td> -->
+          <td class="py-3">
+            <button
+              (click)="deleteFile(file.name)"
+              class="rounded bg-red-400 px-2 py-1 text-xs text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            >
+              删除
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

@@ -1,5 +1,5 @@
 <div class="flex h-full w-full flex-row">
-  <div class="flex basis-1/12 flex-col border-r py-6 pl-8">
+  <div class="flex flex-col border-r py-6 pl-8">
     <div class="mb-10 flex flex-row items-center space-x-2">
       <div
         class="cursor-pointer rounded-full p-2 shadow-md hover:outline hover:outline-1 hover:outline-blue-300"
@@ -18,15 +18,15 @@
       </div>
       <span class="text-sm font-bold">创建知识库</span>
     </div>
-    <div>
-      <ul class="steps steps-vertical text-[12px] font-normal">
-        <li class="step step-info w-56">选择数据源</li>
+    <div class="min-w-48">
+      <ul class="steps steps-vertical text-sm font-normal">
+        <li class="step step-info">选择数据源</li>
         <li class="step" [class]="globalStateService.steps[0] ? 'step-info' : ''">分段与清洗</li>
         <li class="step" [class]="globalStateService.steps[1] ? 'step-info' : ''">处理并完成</li>
       </ul>
     </div>
   </div>
-  <div class="basis-11/12">
+  <div class="w-full">
     <router-outlet></router-outlet>
   </div>
 </div>

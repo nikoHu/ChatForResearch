@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { Chat } from './main/chat/chat.component';
 import { Home } from './main/home/home.component';
 import { Studio } from './main/studio/studio.component';
 import { Knowledge } from './main/knowledge/knowledge.component';
@@ -11,6 +10,9 @@ import { Finish } from './main/knowledge/finish/finish.component';
 import { LoginComponent } from './login/login/login.component';
 import { MainComponent } from './main/main.component';
 import { authGuard } from './services/auth.guard';
+import { KnowledgeDetail } from './main/knowledge/knowledge-detail/knowledge-detail.component';
+import { Files } from './main/knowledge/knowledge-detail/files/files.component';
+import { Recall } from './main/knowledge/knowledge-detail/recall/recall.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -35,6 +37,15 @@ export const routes: Routes = [
               { path: 'upload', component: Upload },
               { path: 'split', component: Split },
               { path: 'finish', component: Finish },
+            ],
+          },
+          {
+            path: ':name',
+            component: KnowledgeDetail,
+            children: [
+              { path: '', redirectTo: 'files', pathMatch: 'full' },
+              { path: 'files', component: Files },
+              { path: 'recall', component: Recall },
             ],
           },
         ],
