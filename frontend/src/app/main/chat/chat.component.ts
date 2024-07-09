@@ -109,14 +109,7 @@ export class Chat {
         content: this.newMessage.trim(),
         role: 'user',
       });
-
-      if (this.globalStateService.studioKnowledgeName) {
-        console.log(this.globalStateService.studioKnowledgeName);
-        this.streamKnowledgeMessages(this.newMessage.trim());
-      } else {
-        this.streamMessages();
-      }
-
+      this.streamMessages();
       this.userScrolled = false;
       this.newMessage = '';
       textArea.style.height = 'auto';
@@ -137,76 +130,13 @@ export class Chat {
       model: this.selectedModel,
       temperature: this.temperature,
       stream: true,
+      is_enable_knowledge: !!this.globalStateService.studioKnowledgeName,
+      knowledge_name: this.globalStateService.studioKnowledgeName,
+      username: this.username,
     };
 
     this.chatService.fetchPost(requestData).subscribe({
       next: (data) => {
-        this.messages[this.messages.length - 1].content += data;
-      },
-      error: (error) => {
-        console.error(error);
-        this.loading = false;
-      },
-      complete: () => {
-        this.loading = false;
-      },
-    });
-  }
-
-  streamKnowledgeMessages(query: string) {
-    this.loading = true;
-
-    const botMessageId = this.messages.length + 1;
-    this.messages.push({ id: botMessageId, content: '', role: 'assistant' });
-
-    const messages_length = this.messages.length;
-    const history = this.messages
-      .slice(messages_length - this.historyLimit - 1, this.messages.length - 1)
-      .map((msg) => ({ role: msg.role, content: msg.content }));
-
-    const formData = new FormData();
-    formData.append('selectedKnowledgeName', this.globalStateService.studioKnowledgeName);
-    formData.append('username', this.username);
-    formData.append('query', query);
-    formData.append('history', JSON.stringify(history));
-    console.log(JSON.stringify(history));
-
-    const url = `${environment.apiUrl}/knowledge/chat_with_knowledge`;
-
-    new Observable<string>((observer) => {
-      const fetchData = async () => {
-        try {
-          const response = await fetch(url, {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error('Network response was not ok');
-          }
-
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-
-          if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                observer.complete();
-                break;
-              }
-              const chunk = decoder.decode(value, { stream: true });
-              observer.next(chunk);
-            }
-          }
-        } catch (error) {
-          observer.error(error);
-        }
-      };
-      fetchData();
-    }).subscribe({
-      next: (data) => {
-        console.log(data);
         this.messages[this.messages.length - 1].content += data;
       },
       error: (error) => {
