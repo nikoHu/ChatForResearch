@@ -1,20 +1,15 @@
 import json
 from pathlib import Path
 from uuid import UUID
-from functools import lru_cache
-from typing import List, Dict, Any
+from typing import List, Any
 from contextlib import contextmanager
 
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
 import weaviate
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.llms import ChatGLM
-from langchain.prompts import PromptTemplate
-from langchain.schema import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from weaviate.classes.config import Configure, Property, DataType, VectorDistances
 from weaviate.classes.query import MetadataQuery, Filter
 import structlog
@@ -26,7 +21,6 @@ ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
 UPLOAD_DIRECTORY = Path("uploads")
 VECTOR_DB_DIRECTORY = Path("vector_dbs")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
-CHATGLM_ENDPOINT = "http://127.0.0.1:8000/chat/completions"
 
 # Ensure directories exist
 UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
@@ -42,10 +36,6 @@ def get_weaviate_client():
         yield client
     finally:
         client.close()
-
-
-def get_llm():
-    return ChatGLM(endpoint_url=CHATGLM_ENDPOINT)
 
 
 class WeaviateJSONEncoder(json.JSONEncoder):
@@ -361,106 +351,3 @@ async def recall(
     except Exception as e:
         logger.error("recall_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/chat_with_knowledge")
-def chat_with_knowledge(
-    selectedKnowledgeName: str = Form(...),
-    username: str = Form(...),
-    query: str = Form(...),
-    history: str = Form(...),
-):
-    logger.info(
-        "chat_with_knowledge_request",
-        knowledge_name=selectedKnowledgeName,
-        username=username,
-        query=query,
-    )
-
-    history = json.loads(history)
-
-    def generate_response():
-        try:
-            with get_weaviate_client() as weaviate_client:
-                collection = weaviate_client.collections.get(f"{username}{selectedKnowledgeName}")
-
-                def retrieve(query: str) -> List[str]:
-                    response = collection.query.near_text(
-                        query=query,
-                        limit=2,
-                    )
-                    return [obj.properties["text"] for obj in response.objects]
-
-                def format_history(history: List[Dict[str, str]]) -> str:
-                    return "\n".join(
-                        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-3:]]
-                    )
-
-                judge_prompt = PromptTemplate.from_template(
-                    "你是一个智能助手。你的任务是判断是否绝对需要额外的信息来回答用户的问题。"
-                    "只有在问题明确要求特定信息且你无法基于常识回答时，才输出True。对于问候、闲聊或一般性问题，请输出False。\n\n"
-                    "对话历史：\n{history}\n\n当前问题：{question}\n\n"
-                    "是否绝对需要额外信息来回答这个问题？请只回答 True 或 False。"
-                )
-
-                initial_answer_prompt = PromptTemplate.from_template(
-                    "你是一个友好的聊天助手。请根据对话历史和当前问题进行回答。"
-                    "如果是问候或闲聊，请做出适当的回应。如果你不确定或需要更多信息，请诚实地说出来。\n\n"
-                    "对话历史：\n{history}\n\n当前问题：{question}\n\n请给出初步回答："
-                )
-
-                final_answer_prompt = PromptTemplate.from_template(
-                    "你是一个智能助手。请根据提供的信息回答用户的问题。如果有额外上下文，请使用它来补充你的回答。"
-                    "保持回答简洁明了，并确保回答与问题直接相关。\n\n"
-                    "对话历史：\n{history}\n\n当前问题：{question}\n"
-                    "初步回答：{initial_answer}\n额外上下文：{context}\n\n请给出最终回答："
-                )
-
-                llm = get_llm()
-
-                def rag_chain_with_history(query: str, history: List[Dict[str, str]]):
-                    formatted_history = format_history(history)
-
-                    # 判断是否需要检索信息
-                    judge_chain = judge_prompt | llm | StrOutputParser()
-                    need_retrieval = (
-                        judge_chain.invoke({"history": formatted_history, "question": query})
-                        .strip()
-                        .lower()
-                        == "true"
-                    )
-
-                    # 生成初步回答
-                    initial_answer_chain = initial_answer_prompt | llm | StrOutputParser()
-                    initial_answer = initial_answer_chain.invoke(
-                        {"history": formatted_history, "question": query}
-                    )
-
-                    # 如果需要检索，则获取上下文并生成最终回答
-                    if need_retrieval:
-                        context = "\n".join(retrieve(query))
-                        final_answer_chain = final_answer_prompt | llm | StrOutputParser()
-                        result = final_answer_chain.invoke(
-                            {
-                                "history": formatted_history,
-                                "question": query,
-                                "initial_answer": initial_answer,
-                                "context": context,
-                            }
-                        )
-                    else:
-                        result = initial_answer
-
-                    return result
-
-                response_chain = RunnableLambda(lambda x: rag_chain_with_history(x, history))
-
-                for chunk in response_chain.stream(query):
-                    print(chunk, end="", flush=True)
-                    yield chunk
-
-        except Exception as e:
-            logger.error("chat_with_knowledge_error", error=str(e))
-            yield f"An error occurred: {str(e)}"
-
-    return StreamingResponse(generate_response(), media_type="text/event-stream")

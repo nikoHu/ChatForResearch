@@ -1,12 +1,26 @@
 import yaml
-import logging
+import structlog
 import chatglm_cpp
+from contextlib import contextmanager
 
 from functools import lru_cache
-from datetime import datetime
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from schemas.chat import Chat, ChatRequest, ChatResponse
+from schemas.chat import Chat
+
+import weaviate
+
+logger = structlog.get_logger()
+
+
+@contextmanager
+def get_weaviate_client():
+    client = weaviate.connect_to_local()
+    try:
+        yield client
+    finally:
+        client.close()
+
 
 router = APIRouter()
 
@@ -43,42 +57,51 @@ def chat(items: Chat):
     select_model = items.model
     temperature = items.temperature / 10
     stream = items.stream
+    is_enable_knowledge = items.is_enable_knowledge
+    knowledge_name = items.knowledge_name
+    username = items.username
 
+    def get_system_prompt(context):
+        return f"""
+        你是一个智能助手。请根据以下上下文信息回答用户的问题:
+        ---------------------
+        {context}
+        ---------------------
+        请仔细阅读上述上下文信息, 只在回答与问题直接相关时才使用它。
+        不要假设你是上下文中描述的任何人物。
+        始终以第三人称回答问题。
+        如果上下文信息不足以回答问题,请诚实地说你不知道。
+        """
+
+    if is_enable_knowledge:
+        with get_weaviate_client() as weaviate_client:
+            collection = weaviate_client.collections.get(f"{username}{knowledge_name}")
+            query = messages[-1].content
+
+            response = collection.query.near_text(
+                query=query,
+                limit=5,
+            )
+
+            context = "\n".join([obj.properties["text"] for obj in response.objects])
+            system_prompt = get_system_prompt(context)
+            messages.insert(0, chatglm_cpp.ChatMessage(role="system", content=system_prompt))
+
+    logger.info("User query", query=messages, is_enable_knowledge=is_enable_knowledge)
     generation_kwargs = dict(temperature=temperature, stream=stream)
     messages = [
         chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages
     ]
 
     def generate_response():
-        for message in model.chat(messages, **generation_kwargs):
-            yield message.content
+        try:
+            answer = ""
+            for message in model.chat(messages, **generation_kwargs):
+                answer += message.content
+                yield message.content
+            logger.info("Assistant response", response=answer.strip())
+        except Exception as e:
+            logger.exception("Error generating response", error=str(e))
+            yield "I'm sorry, but I encountered an error while generating the response."
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
-
-
-@router.post("/completions")
-async def chat(body: ChatRequest) -> ChatResponse:
-    messages = []
-    for prompt, response in body.history:
-        messages += [
-            chatglm_cpp.ChatMessage(role="user", content=prompt),
-            chatglm_cpp.ChatMessage(role="assistant", content=response),
-        ]
-    messages.append(chatglm_cpp.ChatMessage(role="user", content=body.prompt))
-
-    output = model.chat(
-        messages,
-        max_length=body.max_length,
-        do_sample=body.temperature > 0,
-        top_p=body.top_p,
-        temperature=body.temperature,
-    )
-    history = body.history + [(body.prompt, output.content)]
-    answer = ChatResponse(
-        response=output.content,
-        history=history,
-        status=status.HTTP_200_OK,
-        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    )
-    logging.info(f'prompt: "{body.prompt}", response: "{output.content}"')
-    return answer
