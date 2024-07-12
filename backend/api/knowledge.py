@@ -1,4 +1,7 @@
 import json
+import shutil
+import pymupdf4llm
+import subprocess
 from pathlib import Path
 from uuid import UUID
 from typing import List, Any
@@ -9,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 import weaviate
 from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownTextSplitter
 from weaviate.classes.config import Configure, Property, DataType, VectorDistances
 from weaviate.classes.query import MetadataQuery, Filter
 import structlog
@@ -91,16 +94,46 @@ def process_file(
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
-    loader = TextLoader(str(file_path))
-    documents = loader.load()
+    file_extension = file_path.suffix.lower()
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=maxLength,
-        chunk_overlap=overlapLength,
-        separators=[separator],
-        add_start_index=True,
-    )
-    texts = text_splitter.split_documents(documents)
+    # 定义不同文件类型的分隔符
+    markdown_separators = [
+        "\n#{1,6} ",
+        "```\n",
+        "\n\\*\\*\\*+\n",
+        "\n---+\n",
+        "\n___+\n",
+        "\n\n",
+        "\n",
+        " ",
+        "",
+    ]
+    text_separators = ["\n\n", "\n", " ", ""]
+
+    if separator:
+        markdown_separators.append(separator)
+        text_separators.append(separator)
+
+    def get_splitter(separators):
+        return RecursiveCharacterTextSplitter(
+            chunk_size=maxLength, chunk_overlap=overlapLength, separators=separators
+        )
+
+    if file_extension in [".pdf", ".md"]:
+        if file_extension == ".pdf":
+            content = pymupdf4llm.to_markdown(str(file_path))
+        else:
+            with open(file_path, "r", encoding="utf-8") as file:
+                content = file.read()
+
+        splitter = get_splitter(markdown_separators)
+        texts = splitter.create_documents([content])
+    else:
+        loader = TextLoader(str(file_path))
+        documents = loader.load()
+
+        splitter = get_splitter(text_separators)
+        texts = splitter.split_documents(documents)
 
     if replaceSpaces:
         for text in texts:
