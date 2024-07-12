@@ -1,3 +1,4 @@
+import json
 import yaml
 import structlog
 import chatglm_cpp
@@ -60,6 +61,8 @@ def chat(items: Chat):
     is_enable_knowledge = items.is_enable_knowledge
     knowledge_name = items.knowledge_name
     username = items.username
+    source = ''
+    has_context = False
 
     def get_system_prompt(context):
         return f"""
@@ -84,6 +87,9 @@ def chat(items: Chat):
             )
 
             context = "\n".join([obj.properties["text"] for obj in response.objects])
+            if response.objects:
+                source = response.objects[0].properties.get("source", '')
+            has_context = bool(context)
             system_prompt = get_system_prompt(context)
             messages.insert(0, chatglm_cpp.ChatMessage(role="system", content=system_prompt))
 
@@ -98,10 +104,22 @@ def chat(items: Chat):
             answer = ""
             for message in model.chat(messages, **generation_kwargs):
                 answer += message.content
-                yield message.content
+                yield json.dumps(
+                    {
+                        "content": message.content,
+                        "has_context": has_context,
+                        "source": source,
+                    }
+                ) + "\n"
             logger.info("Assistant response", response=answer.strip())
         except Exception as e:
             logger.exception("Error generating response", error=str(e))
-            yield "I'm sorry, but I encountered an error while generating the response."
+            yield json.dumps(
+                {
+                    "content": "I'm sorry, but I encountered an error while generating the response.",
+                    "has_context": False,
+                    "source": source,
+                }
+            ) + "\n"
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
