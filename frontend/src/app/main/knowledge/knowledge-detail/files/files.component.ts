@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
@@ -15,7 +16,7 @@ interface FileData {
 @Component({
   selector: 'files',
   standalone: true,
-  imports: [FormsModule, LucideAngularModule],
+  imports: [FormsModule, RouterLink, LucideAngularModule],
   templateUrl: './files.component.html',
 })
 export class Files {

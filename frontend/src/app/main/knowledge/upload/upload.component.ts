@@ -67,6 +67,7 @@ export class Upload {
 
   ngOnInit() {
     this.username = this.authService.getUsername() || '';
+    console.log(this.globalStateService.knowledgeName);
   }
 
   onDragOver(event: DragEvent) {

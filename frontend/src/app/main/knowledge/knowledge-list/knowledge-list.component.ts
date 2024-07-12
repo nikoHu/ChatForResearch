@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../services/auth.service';
+import { GlobalStateService } from '../../../services/global-state.service';
 
 @Component({
   selector: 'knowledge-list',
@@ -17,6 +18,7 @@ export class KnowledgeList {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
+    public globalStateService: GlobalStateService,
   ) {}
 
   ngOnInit() {

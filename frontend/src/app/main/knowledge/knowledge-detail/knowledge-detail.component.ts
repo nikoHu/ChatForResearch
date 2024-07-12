@@ -22,6 +22,7 @@ export class KnowledgeDetail {
     this.route.paramMap.subscribe((params) => {
       this.name = params.get('name') || '';
       this.globalStateService.selectedKnowledgeName = this.name;
+      this.globalStateService.knowledgeName = this.name;
     });
   }
 
