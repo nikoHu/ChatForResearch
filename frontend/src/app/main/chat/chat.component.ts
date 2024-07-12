@@ -25,6 +25,8 @@ export class Chat {
   historyLimit = 50;
   temperature = 5;
   username = '';
+  has_context = false;
+  source = '';
 
   @ViewChild('textarea') textarea!: ElementRef<HTMLTextAreaElement>;
   isFullStyle = true;
@@ -137,7 +139,12 @@ export class Chat {
 
     this.chatService.fetchPost(requestData).subscribe({
       next: (data) => {
-        this.messages[this.messages.length - 1].content += data;
+        this.messages[this.messages.length - 1].content += data.content;
+        this.has_context = data.has_context;
+        this.source = data.source;
+        console.log('Content:', data.content);
+        console.log('Has context:', data.has_context);
+        console.log('Source:', data.source);
       },
       error: (error) => {
         console.error(error);

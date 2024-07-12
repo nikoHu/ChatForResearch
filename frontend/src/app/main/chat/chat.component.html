@@ -70,11 +70,18 @@
             class="my-5 mr-7 h-fit w-fit max-w-[60%] self-end whitespace-pre-wrap rounded-2xl bg-primary px-3 py-2 text-base text-white"
           >{{ message.content }}</div>
         } @else {
-          <markdown
-            clipboard
-            class="prose my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-base-300 px-3 py-2 text-base"
-            [data]="message.content"
-          ></markdown>
+          <div class="my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-base-300 px-3 py-2">
+            <markdown clipboard class="prose text-base" [data]="message.content"></markdown>
+            @if (has_context) {
+              <div class="mt-2 space-y-1 text-[12px]">
+                <div class="flex flex-row items-center justify-center space-x-1">
+                  <div>CITATIONS</div>
+                  <hr class="w-full" />
+                </div>
+                <div class="w-fit rounded-lg bg-white p-2">{{ source }}</div>
+              </div>
+            }
+          </div>
         }
       }
     }

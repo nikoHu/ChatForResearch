@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root',
 })
 export class ChatService {
-  fetchPost(requestData: object): Observable<string> {
+  fetchPost(requestData: object): Observable<{ content: string; has_context: boolean; source: string }> {
     const url = `${environment.apiUrl}/chat/`;
 
     return new Observable((observer) => {
@@ -35,7 +35,18 @@ export class ChatService {
                 break;
               }
               const chunk = decoder.decode(value, { stream: true });
-              observer.next(chunk);
+
+              const lines = chunk.split('\n');
+              for (const line of lines) {
+                if (line.trim()) {
+                  try {
+                    const parsedData = JSON.parse(line);
+                    observer.next(parsedData);
+                  } catch (parseError) {
+                    console.error('Error parsing JSON:', parseError);
+                  }
+                }
+              }
             }
           }
         } catch (error) {
