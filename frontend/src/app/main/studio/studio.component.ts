@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, HostListener, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { Chat } from '../chat/chat.component';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
@@ -20,10 +20,19 @@ interface KnowledgeBase {
   templateUrl: './studio.component.html',
 })
 export class Studio {
+  @ViewChild('leftPanel') leftPanel!: ElementRef;
+  @ViewChild('rightPanel') rightPanel!: ElementRef;
+
+  leftWidth = 50;
+  isDragging = false;
+  minLeftWidth = 40; // 最小左侧宽度 (3:7)
+  maxLeftWidth = 60; // 最大左侧宽度 (7:3)
+
   knowledges: any = [];
   username = '';
   pdfSrc: string | Uint8Array | null = null;
   constructor(
+    private el: ElementRef,
     private http: HttpClient,
     private authService: AuthService,
     public globalStateService: GlobalStateService,
@@ -44,6 +53,41 @@ export class Studio {
         console.error(error);
       },
     });
+  }
+
+  ngAfterViewInit() {
+    this.updatePanelSizes();
+  }
+
+  onMouseDown(event: MouseEvent) {
+    event.preventDefault();
+    this.isDragging = true;
+  }
+
+  @HostListener('window:mouseup')
+  onMouseUp() {
+    this.isDragging = false;
+  }
+
+  @HostListener('window:mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
+    if (!this.isDragging) return;
+
+    const containerWidth = this.el.nativeElement.offsetWidth;
+    let newLeftWidth = (event.clientX / containerWidth) * 100;
+
+    // 应用最小和最大宽度限制
+    newLeftWidth = Math.max(this.minLeftWidth, Math.min(newLeftWidth, this.maxLeftWidth));
+
+    this.leftWidth = newLeftWidth;
+    this.updatePanelSizes();
+  }
+
+  updatePanelSizes() {
+    if (this.leftPanel && this.rightPanel) {
+      this.leftPanel.nativeElement.style.width = `${this.leftWidth}%`;
+      this.rightPanel.nativeElement.style.width = `${100 - this.leftWidth}%`;
+    }
   }
 
   selectedKnowledgeName: string | null = null;

@@ -1,174 +1,179 @@
 <div class="flex h-full w-full flex-row items-center justify-center">
   <!--left panel-->
-  @if (pdfSrc) {
-    <!-- PDF预览 -->
-    <div class="flex h-full w-1/2 flex-col items-center justify-center">
-      <div class="flex h-[5%] cursor-pointer items-center" (click)="pdfSrc = ''">
-        <div class="w-fit rounded-md bg-blue-500 px-4 py-1 text-sm font-medium text-white">返回</div>
-      </div>
-      <pdf-viewer
-        [src]="pdfSrc"
-        [rotation]="0"
-        [original-size]="false"
-        [show-all]="true"
-        [fit-to-page]="false"
-        [zoom]="1"
-        [zoom-scale]="'page-fit'"
-        [stick-to-page]="false"
-        [render-text]="true"
-        [external-link-target]="'blank'"
-        [autoresize]="true"
-        [show-borders]="false"
-        class="h-[95%] w-[95%] border"
-      ></pdf-viewer>
-    </div>
-  } @else {
-    <div class="flex w-1/2 flex-col self-start *:mx-auto *:my-5 *:w-4/5">
-      <label>
-        <span class="mb-2 block font-extrabold">提示词</span>
-        <textarea
-          rows="10"
-          class="textarea textarea-bordered block w-full resize-none"
-          placeholder="在这里写你的提示词..."
-        ></textarea>
-      </label>
-      <div class="flex h-fit items-center justify-between rounded-xl bg-base-200 px-3 py-2">
-        <span class="font-extrabold">变量</span>
-        <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral">+ 添加</button>
-      </div>
-      <div class="flex h-fit flex-col items-center justify-between rounded-xl bg-base-200 px-3 py-2">
-        <div class="flex w-full flex-row justify-between">
-          <div class="font-extrabold">知识库</div>
-          <button
-            class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral"
-            onclick="knowledge.showModal()"
-          >
-            + 添加
-          </button>
+  <div #leftPanel [style.width.%]="leftWidth" class="h-full">
+    @if (pdfSrc) {
+      <!-- PDF预览 -->
+      <div class="flex h-full flex-col items-center justify-center">
+        <div class="flex h-[5%] cursor-pointer items-center" (click)="pdfSrc = ''">
+          <div class="w-fit rounded-md bg-blue-500 px-4 py-1 text-sm font-medium text-white">返回</div>
         </div>
-        @if (selectedKnowledgeName) {
-          <div class="my-2 flex w-full flex-col space-y-2">
-            <div class="flex flex-row items-center justify-between rounded-lg border bg-white px-5 py-2 shadow-sm">
-              <span>{{ selectedKnowledgeName }}</span>
-              <lucide-icon
-                name="trash-2"
-                class="cursor-pointer text-blue-500"
-                [size]="20"
-                (click)="selectKnowledge('')"
-              ></lucide-icon>
-            </div>
+        <pdf-viewer
+          [src]="pdfSrc"
+          [rotation]="0"
+          [original-size]="false"
+          [show-all]="true"
+          [fit-to-page]="false"
+          [zoom]="1"
+          [zoom-scale]="'page-width'"
+          [stick-to-page]="false"
+          [render-text]="true"
+          [external-link-target]="'blank'"
+          [autoresize]="true"
+          [show-borders]="false"
+          class="h-[95%] w-[95%] rounded-t-lg border"
+        ></pdf-viewer>
+      </div>
+    } @else {
+      <div class="flex flex-col self-start *:mx-auto *:my-5 *:w-4/5">
+        <label>
+          <span class="mb-2 block font-extrabold">提示词</span>
+          <textarea
+            rows="10"
+            class="textarea textarea-bordered block w-full resize-none"
+            placeholder="在这里写你的提示词..."
+          ></textarea>
+        </label>
+        <div class="flex h-fit items-center justify-between rounded-xl bg-base-200 px-3 py-2">
+          <span class="font-extrabold">变量</span>
+          <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral">+ 添加</button>
+        </div>
+        <div class="flex h-fit flex-col items-center justify-between rounded-xl bg-base-200 px-3 py-2">
+          <div class="flex w-full flex-row justify-between">
+            <div class="font-extrabold">知识库</div>
+            <button
+              class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral"
+              onclick="knowledge.showModal()"
+            >
+              + 添加
+            </button>
           </div>
-        }
-        <dialog id="knowledge" class="modal">
-          <div class="modal-box">
-            <h3 class="mb-5 text-lg font-bold">选择引用知识库</h3>
-            @for (item of knowledges; track item) {
-              <div
-                class="mb-2 flex cursor-pointer items-center justify-between rounded-lg border p-3"
-                [class.bg-blue-50]="selectedKnowledgeName === item"
-                (click)="selectKnowledge(item)"
-                [class.hover:bg-blue-50]="selectedKnowledgeName !== item"
-              >
-                <div class="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
+          @if (selectedKnowledgeName) {
+            <div class="my-2 flex w-full flex-col space-y-2">
+              <div class="flex flex-row items-center justify-between rounded-lg border bg-white px-5 py-2 shadow-sm">
+                <span>{{ selectedKnowledgeName }}</span>
+                <lucide-icon
+                  name="trash-2"
+                  class="cursor-pointer text-blue-500"
+                  [size]="20"
+                  (click)="selectKnowledge('')"
+                ></lucide-icon>
+              </div>
+            </div>
+          }
+          <dialog id="knowledge" class="modal">
+            <div class="modal-box">
+              <h3 class="mb-5 text-lg font-bold">选择引用知识库</h3>
+              @for (item of knowledges; track item) {
+                <div
+                  class="mb-2 flex cursor-pointer items-center justify-between rounded-lg border p-3"
+                  [class.bg-blue-50]="selectedKnowledgeName === item"
+                  (click)="selectKnowledge(item)"
+                  [class.hover:bg-blue-50]="selectedKnowledgeName !== item"
+                >
+                  <div class="flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      [class.text-blue-500]="selectedKnowledgeName === item"
+                      [class.text-gray-400]="selectedKnowledgeName !== item"
+                      class="mr-2"
+                    >
+                      <path
+                        d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"
+                      ></path>
+                    </svg>
+                    <span class="text-sm">{{ item }}</span>
+                  </div>
+                </div>
+              }
+              <div class="modal-action">
+                <form method="dialog">
+                  <div class="mt-4 flex justify-end space-x-2">
+                    <button class="rounded bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600">Close</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </dialog>
+        </div>
+        <div class="flex h-fit flex-col rounded-xl bg-base-200 px-3 pb-4 pt-2">
+          <div class="mb-3 block font-extrabold">工具</div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
+              <div class="flex flex-row items-center justify-center space-x-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="inline size-4"
+                >
+                  <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    [class.text-blue-500]="selectedKnowledgeName === item"
-                    [class.text-gray-400]="selectedKnowledgeName !== item"
-                    class="mr-2"
-                  >
-                    <path
-                      d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"
-                    ></path>
-                  </svg>
-                  <span class="text-sm">{{ item }}</span>
-                </div>
+                    d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                  />
+                </svg>
+                <span class="text-sm">联网搜索</span>
               </div>
-            }
-            <div class="modal-action">
-              <form method="dialog">
-                <div class="mt-4 flex justify-end space-x-2">
-                  <button class="rounded bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600">Close</button>
-                </div>
-              </form>
+              <input type="checkbox" class="toggle" />
             </div>
-          </div>
-        </dialog>
-      </div>
-      <div class="flex h-fit flex-col rounded-xl bg-base-200 px-3 pb-4 pt-2">
-        <div class="mb-3 block font-extrabold">工具</div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
-            <div class="flex flex-row items-center justify-center space-x-1">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="inline size-4"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
-              <span class="text-sm">联网搜索</span>
-            </div>
-            <input type="checkbox" class="toggle" />
-          </div>
-          <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
-            <div class="flex flex-row items-center justify-center space-x-1">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="inline size-4"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"
-                />
-              </svg>
+            <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
+              <div class="flex flex-row items-center justify-center space-x-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="inline size-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"
+                  />
+                </svg>
 
-              <span class="text-sm">代码解释器</span>
+                <span class="text-sm">代码解释器</span>
+              </div>
+              <input type="checkbox" class="toggle" />
             </div>
-            <input type="checkbox" class="toggle" />
+          </div>
+        </div>
+        <div class="flex h-fit flex-col rounded-xl bg-base-200 px-3 pb-4 pt-2">
+          <div class="mb-2 block font-extrabold">预览PDF</div>
+          <div class="relative">
+            <input
+              type="file"
+              (change)="onFileSelected($event)"
+              accept="application/pdf"
+              class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+            <div
+              class="flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-gray-50"
+            >
+              点击选择PDF文件
+            </div>
           </div>
         </div>
       </div>
-      <div class="flex h-fit flex-col rounded-xl bg-base-200 px-3 pb-4 pt-2">
-        <div class="mb-2 block font-extrabold">预览PDF</div>
-        <div class="relative">
-          <input
-            type="file"
-            (change)="onFileSelected($event)"
-            accept="application/pdf"
-            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          />
-          <div
-            class="flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-gray-50"
-          >
-            点击选择PDF文件
-          </div>
-        </div>
-      </div>
-    </div>
-  }
+    }
+  </div>
+
+  <!-- Resizer -->
+  <div class="h-full w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400" (mousedown)="onMouseDown($event)"></div>
 
   <!--right panel-->
-  <div class="h-full w-1/2 border-l">
+  <div class="h-full" #rightPanel [style.width.%]="100 - leftWidth">
     <chat></chat>
   </div>
 </div>
