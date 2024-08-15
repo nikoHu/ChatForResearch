@@ -6,8 +6,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root',
 })
 export class ChatService {
-  fetchPost(requestData: object): Observable<{ content: string; has_context: boolean; source: string }> {
-    const url = `${environment.apiUrl}/chat/`;
+  fetchPost(requestData: object, endpoint: string): Observable<{ content: string }> {
+    const url = `${environment.apiUrl}/${endpoint}`;
 
     return new Observable((observer) => {
       const fetchData = async () => {
@@ -54,6 +54,34 @@ export class ChatService {
         }
       };
       fetchData();
+    });
+  }
+
+  loadHistoryChat(username: string, mode: string): Observable<{ history_chat: { id: number; role: string; content: string }[] }> {
+    const url = `${environment.apiUrl}/chat/load-history-chat`;
+    const body = { username, mode };
+  
+    return new Observable((observer) => {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          observer.next(data);
+          observer.complete();
+        })
+        .catch(error => {
+          observer.error(error);
+        });
     });
   }
 }

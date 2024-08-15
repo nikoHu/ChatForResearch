@@ -1,6 +1,6 @@
 import { Component, HostListener, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { Chat } from '../chat/chat.component';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
@@ -28,6 +28,7 @@ export class Studio {
   minLeftWidth = 40; // 最小左侧宽度 (3:7)
   maxLeftWidth = 60; // 最大左侧宽度 (7:3)
 
+  studio_mode = 'studio_default';
   knowledges: any = [];
   username = '';
   pdfSrc: string | Uint8Array | null = null;
@@ -95,6 +96,12 @@ export class Studio {
   selectKnowledge(name: string): void {
     this.selectedKnowledgeName = this.selectedKnowledgeName === name ? null : name;
     this.globalStateService.studioKnowledgeName = this.selectedKnowledgeName || '';
+    this.studio_mode = 'studio_knowledge';
+  }
+
+  delete() {
+    this.selectedKnowledgeName = null;
+    this.studio_mode = 'studio_default';
   }
 
   onFileSelected(event: Event): void {

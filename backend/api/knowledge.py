@@ -1,21 +1,19 @@
-import json
-import shutil
-import pymupdf4llm
-import subprocess
-from pathlib import Path
-from uuid import UUID
-from typing import List, Any
-from contextlib import contextmanager
-
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
-
-import weaviate
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownTextSplitter
-from weaviate.classes.config import Configure, Property, DataType, VectorDistances
-from weaviate.classes.query import MetadataQuery, Filter
+import os
 import structlog
+import pymupdf4llm
+from pathlib import Path
+from uuid import uuid4
+from typing import List, Any
+
+from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+from langchain_qdrant import QdrantVectorStore
+from langchain_ollama import OllamaEmbeddings
+from langchain_community.document_loaders import TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 logger = structlog.get_logger()
 
@@ -30,24 +28,9 @@ UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
-
-
-@contextmanager
-def get_weaviate_client():
-    client = weaviate.connect_to_local()
-    try:
-        yield client
-    finally:
-        client.close()
-
-
-class WeaviateJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, UUID):
-            return str(obj)
-        if hasattr(obj, "__dict__"):
-            return obj.__dict__
-        return super().default(obj)
+client = QdrantClient(url="http://localhost:6333")
+embeddings = OllamaEmbeddings(model="quentinz/bge-large-zh-v1.5")
+store = {}
 
 
 @router.post("/upload")
@@ -127,21 +110,21 @@ def process_file(
                 content = file.read()
 
         splitter = get_splitter(markdown_separators)
-        texts = splitter.create_documents([content])
+        docs = splitter.create_documents([content])
     else:
         loader = TextLoader(str(file_path))
         documents = loader.load()
 
         splitter = get_splitter(text_separators)
-        texts = splitter.split_documents(documents)
+        docs = splitter.split_documents(documents)
 
     if replaceSpaces:
-        for text in texts:
-            text.page_content = (
-                text.page_content.replace("\n", " ").replace("\t", " ").replace("  ", " ")
+        for doc in docs:
+            doc.page_content = (
+                doc.page_content.replace("\n", " ").replace("\t", " ").replace("  ", " ")
             )
 
-    return texts
+    return docs
 
 
 @router.post("/preview-segments")
@@ -200,37 +183,40 @@ async def create_vector_db(
             separator=separator,
         )
 
-        with get_weaviate_client() as weaviate_client:
-            collection_name = f"{username}{knowledgeName}"
+        collection = f"{username}{knowledgeName}"
 
-            if weaviate_client.collections.exists(collection_name):
-                logger.info("vector_db_already_exists")
-            else:
-                weaviate_client.collections.create(
-                    collection_name,
-                    properties=[
-                        Property(name="text", data_type=DataType.TEXT),
-                        Property(name="source", data_type=DataType.TEXT),
-                    ],
-                    vectorizer_config=Configure.Vectorizer.text2vec_transformers(),
-                    vector_index_config=Configure.VectorIndex.hnsw(
-                        distance_metric=VectorDistances.COSINE
-                    ),
-                )
-
-            texts = process_file(
-                knowledgeName,
-                fileName,
-                maxLength,
-                overlapLength,
-                replaceSpaces,
-                separator,
-                username,
+        if client.collection_exists(collection):
+            vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embeddings,
+                collection_name=collection,
             )
-            texts_obj = [{"text": text.page_content, "source": fileName} for text in texts]
-            knowledge = weaviate_client.collections.get(collection_name)
-            knowledge.data.insert_many(texts_obj)
+            logger.info("vector_db_already_exists")
+        else:
+            client.create_collection(
+                collection_name=collection,
+                vectors_config=VectorParams(size=1024, distance=Distance.COSINE),
+            )
 
+            vector_store = QdrantVectorStore(
+                client=client,
+                collection_name=collection,
+                embedding=embeddings,
+            )
+
+        docs = process_file(
+            knowledgeName,
+            fileName,
+            maxLength,
+            overlapLength,
+            replaceSpaces,
+            separator,
+            username,
+        )
+
+        uuids = [str(uuid4()) for _ in range(len(docs))]
+        store[f"{collection}{fileName}"] = uuids
+        print(store)
+        vector_store.add_documents(docs, ids=uuids)
         return {"message": "Vector DB created successfully"}
 
     except Exception as e:
@@ -263,12 +249,7 @@ async def delete_knowledge(knowledgeName: str = Form(...), username: str = Form(
         for file in knowledge_path.iterdir():
             file.unlink()
         knowledge_path.rmdir()
-
-        with get_weaviate_client() as weaviate_client:
-            collection_name = f"{username}{knowledgeName}"
-            if weaviate_client.collections.exists(collection_name):
-                weaviate_client.collections.delete(collection_name)
-
+        client.delete_collection(collection_name=f"{username}{knowledgeName}")
         logger.info("delete_knowledge_success", knowledge_path=str(knowledge_path))
         return {"message": "Knowledge deleted successfully"}
 
@@ -314,12 +295,12 @@ async def delete_file(
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
         file_path.unlink()
 
-        with get_weaviate_client() as weaviate_client:
-            collection_name = f"{username}{knowledgeName}"
-            if weaviate_client.collections.exists(collection_name):
-                collection = weaviate_client.collections.get(collection_name)
-                collection.data.delete_many(where=Filter.by_property("source").equal(fileName))
-
+        collection = f"{username}{knowledgeName}"
+        vector_store = QdrantVectorStore.from_existing_collection(
+            embedding=embeddings,
+            collection_name=collection,
+        )
+        vector_store.delete(ids=store[f"{collection}{fileName}"])
         logger.info("delete_file_success", file_path=str(file_path))
         return {"message": "File deleted successfully"}
 
@@ -348,39 +329,56 @@ async def recall(
             index_mode=index_mode,
         )
 
-        with get_weaviate_client() as weaviate_client:
-            collection = weaviate_client.collections.get(f"{username}{selectedKnowledgeName}")
+        collection = f"{username}{selectedKnowledgeName}"
+        vector_store = QdrantVectorStore.from_existing_collection(
+            embedding=embeddings,
+            collection_name=collection,
+        )
 
-            if index_mode == "vector":
-                if certainty is None:
-                    raise HTTPException(
-                        status_code=400, detail="Certainty is required for vector search"
-                    )
-                response = collection.query.near_text(
-                    certainty=certainty,
-                    query=query,
-                    limit=limit,
-                    return_metadata=MetadataQuery(certainty=True),
+        if index_mode == "vector":
+            found_docs = vector_store.similarity_search_with_score(query, k=limit)
+            results = []
+            for document, score in found_docs:
+                results.append(
+                    {
+                        "content": document.page_content,
+                        "metadata": document.metadata,
+                        "score": score,
+                    }
                 )
-            elif index_mode == "full-text":
-                response = collection.query.bm25(
-                    query=query, limit=limit, return_metadata=MetadataQuery(score=True)
-                )
-            elif index_mode == "hybrid":
-                if certainty is None:
-                    raise HTTPException(
-                        status_code=400, detail="Certainty is required for hybrid search"
-                    )
-                response = collection.query.hybrid(
-                    query=query, alpha=0.75, return_metadata=MetadataQuery(score=True), limit=limit
-                )
-            else:
-                raise HTTPException(status_code=400, detail="Invalid index_mode")
+        # elif index_mode == "full-text":
+        #     response = collection.query.bm25(
+        #         query=query, limit=limit, return_metadata=MetadataQuery(score=True)
+        #     )
+        # elif index_mode == "hybrid":
+        #     if certainty is None:
+        #         raise HTTPException(
+        #             status_code=400, detail="Certainty is required for hybrid search"
+        #         )
+        #     response = collection.query.hybrid(
+        #         query=query, alpha=0.75, return_metadata=MetadataQuery(score=True), limit=limit
+        #     )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid index_mode")
 
-            logger.info("recall_success")
-            response_data = json.loads(json.dumps(response.objects, cls=WeaviateJSONEncoder))
-        return JSONResponse(content={"message": "Recall success", "query_result": response_data})
+        logger.info("recall_success")
+        print(results)
+        return {"message": "Recall successful", "results": results}
 
     except Exception as e:
         logger.error("recall_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/admin/{knowledge_name}/{filename}")
+def get_file(knowledge_name: str, filename: str):
+    try:
+        FILE_DIR = "uploads"
+        file_path = os.path.join(FILE_DIR, "admin", knowledge_name, filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return FileResponse(file_path)
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

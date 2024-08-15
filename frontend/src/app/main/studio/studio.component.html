@@ -55,7 +55,7 @@
                   name="trash-2"
                   class="cursor-pointer text-blue-500"
                   [size]="20"
-                  (click)="selectKnowledge('')"
+                  (click)="delete()"
                 ></lucide-icon>
               </div>
             </div>
@@ -174,6 +174,6 @@
 
   <!--right panel-->
   <div class="h-full" #rightPanel [style.width.%]="100 - leftWidth">
-    <chat></chat>
+    <chat [mode]="studio_mode"></chat>
   </div>
 </div>

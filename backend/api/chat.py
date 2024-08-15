@@ -1,125 +1,172 @@
 import json
-import yaml
 import structlog
-import chatglm_cpp
-from contextlib import contextmanager
-
-from functools import lru_cache
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from schemas.chat import Chat
+from schemas.chat import Chat, ResetChat, HistoryChat, KnowledgeChat
 
-import weaviate
+
+from langchain_ollama import OllamaEmbeddings
+from langchain_qdrant import QdrantVectorStore
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+from langchain_community.chat_models import ChatOllama
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+
 
 logger = structlog.get_logger()
-
-
-@contextmanager
-def get_weaviate_client():
-    client = weaviate.connect_to_local()
-    try:
-        yield client
-    finally:
-        client.close()
-
 
 router = APIRouter()
 
 
-@lru_cache(maxsize=1)
-def load_model():
+@router.get("/models")
+def get_models():
     """
-    加载模型配置和模型实例
+    获取可用的模型列表
     """
-    try:
-        with open("config.yaml", "r") as file:
-            config = yaml.safe_load(file)
-
-        MODEL_PATH = config["chatglm3"]["path"]
-        return chatglm_cpp.Pipeline(MODEL_PATH)
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return None
+    return {"models": ["glm4", "llama3.1"]}
 
 
-# 加载模型
-model = load_model()
+store = {}
+embeddings = OllamaEmbeddings(model="quentinz/bge-large-zh-v1.5")
 
 
-@router.post("/")
-def chat(items: Chat):
-    """
-    处理聊天请求并生成响应
-    """
-    if not model:
-        raise HTTPException(status_code=500, detail="Model is not loaded")
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    if session_id not in store:
+        store[session_id] = InMemoryChatMessageHistory()
+    return store[session_id]
 
-    messages = items.messages
-    select_model = items.model
-    temperature = items.temperature / 10
-    stream = items.stream
-    is_enable_knowledge = items.is_enable_knowledge
-    knowledge_name = items.knowledge_name
-    username = items.username
-    source = ''
-    has_context = False
 
-    def get_system_prompt(context):
-        return f"""
-        你是一个智能助手。请根据以下上下文信息回答用户的问题:
-        ---------------------
-        {context}
-        ---------------------
-        请仔细阅读上述上下文信息, 只在回答与问题直接相关时才使用它。
-        不要假设你是上下文中描述的任何人物。
-        始终以第三人称回答问题。
-        如果上下文信息不足以回答问题,请诚实地说你不知道。
-        """
+@router.post("/completions")
+def chat(item: Chat):
+    mode = item.mode
+    username = item.username
+    model = item.model
+    message = item.message
+    temperature = item.temperature / 10
+    history_length = item.history_length
+    logger.info("Chat", model=model)
 
-    if is_enable_knowledge:
-        with get_weaviate_client() as weaviate_client:
-            collection = weaviate_client.collections.get(f"{username}{knowledge_name}")
-            query = messages[-1].content
+    llm = ChatOllama(model=model, temperature=temperature)
 
-            response = collection.query.near_text(
-                query=query,
-                limit=5,
-            )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(
+                "You are a helpful assistant. Answer all questions to the best of your ability."
+            ),
+            MessagesPlaceholder(variable_name="chat_history", n_messages=history_length),
+        ]
+    )
 
-            context = "\n".join([obj.properties["text"] for obj in response.objects])
-            if response.objects:
-                source = response.objects[0].properties.get("source", '')
-            has_context = bool(context)
-            system_prompt = get_system_prompt(context)
-            messages.insert(0, chatglm_cpp.ChatMessage(role="system", content=system_prompt))
+    chain = prompt | llm | StrOutputParser()
 
-    logger.info("User query", query=messages, is_enable_knowledge=is_enable_knowledge)
-    generation_kwargs = dict(temperature=temperature, stream=stream)
-    messages = [
-        chatglm_cpp.ChatMessage(role=message.role, content=message.content) for message in messages
-    ]
+    with_message_history = RunnableWithMessageHistory(chain, get_session_history)
+    config = {"configurable": {"session_id": f"{username}-{mode}"}}
 
     def generate_response():
-        try:
-            answer = ""
-            for message in model.chat(messages, **generation_kwargs):
-                answer += message.content
-                yield json.dumps(
-                    {
-                        "content": message.content,
-                        "has_context": has_context,
-                        "source": source,
-                    }
-                ) + "\n"
-            logger.info("Assistant response", response=answer.strip())
-        except Exception as e:
-            logger.exception("Error generating response", error=str(e))
+        for chunk in with_message_history.stream(HumanMessage(content=message), config=config):
+            yield json.dumps({"content": chunk, "type": "answer"}) + "\n"
+
+    return StreamingResponse(generate_response(), media_type="text/event-stream")
+
+
+@router.post("/knowledge-completions")
+def knowledge_chat(item: KnowledgeChat):
+    mode = item.mode
+    username = item.username
+    model = item.model
+    message = item.message
+    temperature = item.temperature / 10
+    history_length = item.history_length
+    knowledge_name = item.knowledge_name
+
+    llm = ChatOllama(model=model, temperature=temperature)
+    collection = f"{username}{knowledge_name}"
+    vector_store = QdrantVectorStore.from_existing_collection(
+        embedding=embeddings,
+        collection_name=collection,
+    )
+
+    retriever = vector_store.as_retriever(search_kwargs={"score_threshold": 0.5, "k": 3})
+
+    system_prompt = (
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+        "\n\n"
+        "{context}"
+    )
+
+    qa_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            MessagesPlaceholder("chat_history", n_messages=history_length - 2),
+            ("human", "{input}"),
+        ]
+    )
+    question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
+    conversational_rag_chain = RunnableWithMessageHistory(
+        rag_chain,
+        get_session_history,
+        input_messages_key="input",
+        history_messages_key="chat_history",
+        output_messages_key="answer",
+    )
+
+    config = {"configurable": {"session_id": f"{username}-{mode}"}}
+    chain = conversational_rag_chain.pick(["context", "answer"])
+
+    def generate_response():
+        context = ""
+
+        for chunk in chain.stream({"input": message}, config=config):
+            if context_chunk := chunk.get("context"):
+                context = context_chunk
+            elif answer_chunk := chunk.get("answer"):
+                yield json.dumps({"content": answer_chunk, "type": "answer"}) + "\n"
+
+        if context:
+            print(context[0].metadata["source"].split("/")[-1])
             yield json.dumps(
-                {
-                    "content": "I'm sorry, but I encountered an error while generating the response.",
-                    "has_context": False,
-                    "source": source,
-                }
+                {"content": context[0].metadata["source"].split("/")[-1], "type": "source"}
             ) + "\n"
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
+
+
+@router.post("/reset-chat")
+async def reset_chat(item: ResetChat):
+    username = item.username
+    mode = item.mode
+    session_id = f"{username}-{mode}"
+    if session_id in store:
+        del store[session_id]
+
+    return {"message": "Chat history has been reset."}
+
+
+@router.post("/load-history-chat")
+def load_history_chat(item: HistoryChat):
+    username = item.username
+    mode = item.mode
+    session_id = f"{username}-{mode}"
+
+    if session_id not in store:
+        return {"history_chat": []}
+
+    history_chat = []
+    for i, message in enumerate(store[session_id].messages):
+        if isinstance(message, HumanMessage):
+            history_chat.append({"id": i + 1, "role": "user", "content": message.content})
+        elif isinstance(message, AIMessage):
+            history_chat.append({"id": i + 1, "role": "assistant", "content": message.content})
+
+    return {"history_chat": history_chat}

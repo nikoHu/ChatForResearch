@@ -1,80 +1,84 @@
-import { Component, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, OnInit, AfterViewChecked, Input,  OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';;
 import { NgClass } from '@angular/common';
 import { MarkdownModule } from 'ngx-markdown';
 import { ActivatedRoute } from '@angular/router';
-import { Observable } from 'rxjs';
 import { ChatService } from '../../services/chat.service';
 import { AuthService } from '../../services/auth.service';
 import { GlobalStateService } from '../../services/global-state.service';
-import { environment } from '../../../environments/environment';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+interface HistoryChat {
+  username: string;
+  mode: string;
+}
+
+interface HistoryChatResponse {
+  history_chat: Array<{
+    id: number;
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+}
 
 @Component({
   selector: 'chat',
   templateUrl: './chat.component.html',
   standalone: true,
-  imports: [FormsModule, MarkdownModule, NgClass],
+  imports: [FormsModule, CommonModule, MarkdownModule, NgClass],
 })
-export class Chat {
-  messages: { id: number; content: string; role: string }[] = [];
+export class Chat implements OnInit, AfterViewChecked {
+  messages: { id: number; content: string; role: string ; source: string; url: string}[] = [];
   chatId: string | null = null;
-  selectedModel = 'ChatGLM';
+  selectedModel = 'glm4';
+  models = []
   newMessage = '';
   loading = false;
   userScrolled = false;
   historyLimit = 50;
   temperature = 5;
   username = '';
-  has_context = false;
   source = '';
+  @Input() mode: string = '';
 
   @ViewChild('textarea') textarea!: ElementRef<HTMLTextAreaElement>;
   isFullStyle = true;
 
-  adjustTextarea() {
-    const textArea = this.textarea.nativeElement;
-    if (textArea.value === '') {
-      this.isFullStyle = true;
-    } else {
-      this.isFullStyle = false;
-    }
-    textArea.style.height = 'auto';
-    textArea.style.height = textArea.scrollHeight + 'px';
-  }
-
   constructor(
+    private http: HttpClient,
     private route: ActivatedRoute,
     private chatService: ChatService,
     private authService: AuthService,
     public globalStateService: GlobalStateService,
   ) {}
 
-  onScroll(event: Event) {
-    const contentDiv = document.getElementById('content');
-    if (contentDiv) {
-      this.userScrolled = contentDiv.scrollTop + contentDiv.clientHeight < contentDiv.scrollHeight;
-    }
-  }
-
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
       this.chatId = params.get('id');
-      this.loadChatMessages(this.chatId);
     });
-    // this.adjustTextareaHeight();
     this.username = this.authService.getUsername() || '';
-  }
-
-  loadChatMessages(chatId: string | null) {
-    if (chatId) {
-      // Load the chat messages for the given chatId
-      this.messages = [];
-    }
+    this.fetchModels();
+    this.loadHistoryChat(this.username, this.mode);
   }
 
   ngAfterViewChecked() {
     if (!this.userScrolled) {
       this.scrollToBottom();
+    }
+  }
+
+  adjustTextarea() {
+    const textArea = this.textarea.nativeElement;
+    this.isFullStyle = textArea.value === '';
+    textArea.style.height = 'auto';
+    textArea.style.height = textArea.scrollHeight + 'px';
+  }
+
+  onScroll(event: Event) {
+    const contentDiv = document.getElementById('content');
+    if (contentDiv) {
+      this.userScrolled = contentDiv.scrollTop + contentDiv.clientHeight < contentDiv.scrollHeight;
     }
   }
 
@@ -88,12 +92,9 @@ export class Chat {
   checkEnter(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       if (event.shiftKey) {
-        // 允许换行
         this.isFullStyle = false;
-        return;
       } else {
-        // 发送消息
-        event.preventDefault(); // 防止默认的回车行为（如换行）
+        event.preventDefault();
         this.sendMessage();
       }
     }
@@ -110,7 +111,10 @@ export class Chat {
         id: this.messages.length + 1,
         content: this.newMessage.trim(),
         role: 'user',
+        source: '',
+        url: '',
       });
+      this.source = '';
       this.streamMessages();
       this.userScrolled = false;
       this.newMessage = '';
@@ -119,32 +123,52 @@ export class Chat {
     }
   }
 
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['mode'] && !changes['mode'].firstChange) {
+      this.resetState();
+    }
+  }
+
+  private resetState() {
+    this.loadHistoryChat(this.username, this.mode);
+  }
+
   streamMessages() {
     this.loading = true;
 
     const botMessageId = this.messages.length + 1;
-
-    this.messages.push({ id: botMessageId, content: '', role: 'assistant' });
+    this.messages.push({ id: botMessageId, content: '', role: 'assistant', source: '', url: '' });
 
     const messages_length = this.messages.length;
-    const requestData = {
-      messages: this.messages.slice(messages_length - this.historyLimit - 1, this.messages.length - 1),
+    const requestData: any = {
+      mode: this.mode,
+      username: this.username,
+      message: this.newMessage,
       model: this.selectedModel,
       temperature: this.temperature,
-      stream: true,
-      is_enable_knowledge: !!this.globalStateService.studioKnowledgeName,
-      knowledge_name: this.globalStateService.studioKnowledgeName,
-      username: this.username,
+      history_length: this.historyLimit,
     };
 
-    this.chatService.fetchPost(requestData).subscribe({
-      next: (data) => {
-        this.messages[this.messages.length - 1].content += data.content;
-        this.has_context = data.has_context;
-        this.source = data.source;
-        console.log('Content:', data.content);
-        console.log('Has context:', data.has_context);
-        console.log('Source:', data.source);
+    if (this.globalStateService.studioKnowledgeName) {
+      requestData.knowledge_name = this.globalStateService.studioKnowledgeName;
+    }
+
+    const apiEndpoint = this.globalStateService.studioKnowledgeName
+      ? 'chat/knowledge-completions'
+      : 'chat/completions';
+
+    this.chatService.fetchPost(requestData, apiEndpoint).subscribe({
+      next: (data: any) => {
+        if (data.type === 'answer') {
+          // 处理答案
+          this.messages[this.messages.length - 1].content += data.content;
+          console.log('Answer:', data.content);
+        } else if (data.type === 'source') {
+          // 处理源文档
+          this.messages[this.messages.length - 1].source = data.content;
+          this.messages[this.messages.length - 1].url = `${this.username}/${this.globalStateService.studioKnowledgeName}/${data.content}`;
+          console.log('Source:', data.content);
+        }
       },
       error: (error) => {
         console.error(error);
@@ -154,5 +178,66 @@ export class Chat {
         this.loading = false;
       },
     });
+  }
+
+  loadHistoryChat(username: string, mode: string): void {
+    const url = 'http://localhost:8000/chat/load-history-chat';
+    const payload: HistoryChat = { username, mode };
+    console.log('Payload:', payload);
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    this.http.post<HistoryChatResponse>(url, payload, { headers }).subscribe({
+      next: (response) => {
+        this.messages = response.history_chat.map((chat) => ({
+          id: chat.id,
+          content: chat.content,
+          role: chat.role,
+          source: '',
+          url: '',
+        }));
+      },
+      error: (error) => {
+        console.error('Error fetching chat history:', error);
+      }
+    });
+  }
+
+  resetChat(username: string, mode: string): void {
+    const url = 'http://localhost:8000/chat/reset-chat';
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    this.http.post<any>(url, { username, mode }, { headers }).subscribe({
+      next: (response) => {
+        console.log('Chat reset:', response);
+      },
+      error: (error) => {
+        console.error('Error fetching chat history:', error);
+      }
+    });
+  }
+
+  fetchModels() {
+    this.http.get<any>('http://localhost:8000/chat/models').subscribe({
+      next: (response) => {
+        this.models = response.models;
+      },
+      error: (error) => {
+        console.error('Error fetching models:', error);
+      }
+    });
+  }
+
+  openFile(source: string) {
+    if (source) {
+      const [knowledgeName, filename] = source.split('/');
+      const url = `http://localhost:8000/knowledge/${source}`;
+      window.open(url, '_blank');
+    }
   }
 }

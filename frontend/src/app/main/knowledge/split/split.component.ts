@@ -20,8 +20,8 @@ interface Segment {
 })
 export class Split {
   separator = '，';
-  maxLength = 100;
-  overlapLength = 10;
+  maxLength = 500;
+  overlapLength = 50;
   replaceSpaces = true;
   segments: Segment[] = [];
   username = '';

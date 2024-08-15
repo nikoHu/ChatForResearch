@@ -1,8 +1,9 @@
 <div class="flex h-full w-full flex-col">
   <div class="relative flex w-full basis-1/12 flex-row rounded-2xl py-3 pl-3">
     <select (change)="onSelectChange($event)" class="select select-sm">
-      <option selected>ChatGLM3</option>
-      <option>Llama3</option>
+      @for (model of models; track model) {
+        <option [value]="model" [selected]="model === selectedModel">{{ model | uppercase }}</option>
+      }
     </select>
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -72,13 +73,13 @@
         } @else {
           <div class="my-5 ml-7 h-fit w-fit max-w-[60%] self-start rounded-2xl bg-base-300 px-3 py-2">
             <markdown clipboard class="prose text-base" [data]="message.content"></markdown>
-            @if (has_context) {
+            @if (message.source) {
               <div class="mt-2 space-y-1 text-[12px]">
                 <div class="flex flex-row items-center justify-center space-x-1">
                   <div>CITATIONS</div>
                   <hr class="w-full" />
                 </div>
-                <div class="w-fit rounded-lg bg-white p-2">{{ source }}</div>
+                <div class="w-fit rounded-lg bg-white p-2 cursor-pointer" (click)="openFile(message.url)">{{ message.source }}</div>
               </div>
             }
           </div>

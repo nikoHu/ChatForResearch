@@ -35,10 +35,10 @@ export class Recall {
   query = '';
   activeSearchType = 'vector';
   vectorTopK = 3;
-  vectorScoreThreshold = 0.6;
+  vectorScoreThreshold = 0.3;
   fullTextTopK = 3;
   hybridTopK = 3;
-  hybridScoreThreshold = 0.6;
+  hybridScoreThreshold = 0.3;
   rerankModelType = 'model1';
   results: any[] = [];
 
@@ -80,12 +80,9 @@ export class Recall {
     this.http.post(`${environment.apiUrl}/knowledge/recall`, formData).subscribe({
       next: (data: any) => {
         console.log('Recall result:', data);
-        this.results = data.query_result.map((o: any) => ({
-          text: o.properties?.text || '',
-          score:
-            o.metadata?.score || o.metadata?.certainty
-              ? Number((o.metadata.score || o.metadata.certainty).toFixed(3))
-              : null,
+        this.results = data.results.map((o: any) => ({
+          text: o.content,
+          score: o.score.toFixed(3),
         }));
       },
       error: (error) => {

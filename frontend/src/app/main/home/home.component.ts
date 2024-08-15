@@ -28,6 +28,7 @@ export class Home {
   ];
 
   famousquotes = this.famousQuotesList[10];
+  home_mode: string = 'default';
 
   constructor(public globalStateService: GlobalStateService) {}
 
