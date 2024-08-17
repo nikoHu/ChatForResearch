@@ -1,10 +1,6 @@
 <div class="flex h-full w-full flex-row items-center justify-center">
   <!--left panel-->
-  <div
-    #leftPanel
-    [style.width.%]="leftWidth"
-    class="h-full"
-  >
+  <div #leftPanel [style.width.%]="leftWidth" class="h-full">
     @if (pdfSrc && !uploading) {
       <!-- PDF预览 -->
       <div class="flex h-full flex-col items-center justify-center">
@@ -26,11 +22,11 @@
           [zoom-scale]="'page-width'"
           [stick-to-page]="false"
           [render-text]="true"
-          [render-text-mode]="2"
           [external-link-target]="'blank'"
           [autoresize]="true"
           [show-borders]="false"
           class="h-[95%] w-[95%] rounded-t-lg border"
+          (contextmenu)="onRightClick($event)"
         ></pdf-viewer>
       </div>
     } @else {
@@ -70,10 +66,7 @@
               </div>
             </div>
           }
-          <dialog
-            id="knowledge"
-            class="modal"
-          >
+          <dialog id="knowledge" class="modal">
             <div class="modal-box">
               <h3 class="mb-5 text-lg font-bold">选择引用知识库</h3>
               @for (item of knowledges; track item) {
@@ -137,10 +130,7 @@
                 </svg>
                 <span class="text-sm">联网搜索</span>
               </div>
-              <input
-                type="checkbox"
-                class="toggle"
-              />
+              <input type="checkbox" class="toggle" />
             </div>
             <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
               <div class="flex flex-row items-center justify-center space-x-1">
@@ -161,10 +151,7 @@
 
                 <span class="text-sm">代码解释器</span>
               </div>
-              <input
-                type="checkbox"
-                class="toggle"
-              />
+              <input type="checkbox" class="toggle" />
             </div>
           </div>
         </div>
@@ -201,22 +188,18 @@
       </div>
     }
   </div>
-
+  <div #translationPopup class="translation-popup" [style.display]="showPopup ? 'block' : 'none'">
+    <div class="popup-content">
+      <div class="mb-1 text-lg font-bold">翻译结果:</div>
+      <p class="mb-3">{{ translatedText }}</p>
+      <button (click)="closePopup()" class="close-btn">关闭</button>
+    </div>
+  </div>
   <!-- Resizer -->
-  <div
-    class="h-full w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
-    (mousedown)="onMouseDown($event)"
-  ></div>
+  <div class="h-full w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400" (mousedown)="onMouseDown($event)"></div>
 
   <!--right panel-->
-  <div
-    class="h-full"
-    #rightPanel
-    [style.width.%]="100 - leftWidth"
-  >
-    <chat
-      [mode]="studio_mode"
-      [pdfname]="pdfname"
-    ></chat>
+  <div class="h-full" #rightPanel [style.width.%]="100 - leftWidth">
+    <chat [mode]="studio_mode" [pdfname]="pdfname"></chat>
   </div>
 </div>

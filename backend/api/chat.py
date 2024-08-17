@@ -45,6 +45,25 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
     return store[session_id]
 
 
+@router.post("/translate")
+def translate(text: str = Form(...)):
+    try:
+        llm = ChatOllama(model="llama3.1")
+
+        system_template = (
+            "Translate the following into {language}. Don't need to extral explaination."
+        )
+        prompt = ChatPromptTemplate.from_messages([("system", system_template), ("user", "{text}")])
+
+        chain = prompt | llm | StrOutputParser()
+        result = chain.invoke({"language": "chinese", "text": text})
+        return {"translation": result}
+
+    except Exception as e:
+        logger.error("Translation error", error=str(e), text=text)
+        return {"error": f"Translation failed: {str(e)}"}
+
+
 @router.post("/completions")
 def chat(item: Chat):
     mode = item.mode

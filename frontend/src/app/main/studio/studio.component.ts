@@ -20,6 +20,29 @@ interface KnowledgeBase {
   standalone: true,
   imports: [Chat, FormsModule, LucideAngularModule, PdfViewerModule],
   templateUrl: './studio.component.html',
+  styles: [
+    `
+      .translation-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+      }
+      .close-btn {
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #f0f0f0;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+    `,
+  ],
 })
 export class Studio {
   @ViewChild('leftPanel') leftPanel!: ElementRef;
@@ -159,5 +182,81 @@ export class Studio {
         this.uploading = false;
       },
     });
+  }
+
+  @ViewChild('translationPopup') translationPopup!: ElementRef;
+  showPopup = false;
+  translatedText = '';
+  isTranslating = false;
+
+  onRightClick(event: MouseEvent) {
+    event.preventDefault();
+    const selection = window.getSelection();
+    if (selection) {
+      const selectedText = selection.toString().trim();
+      if (selectedText) {
+        this.showTranslationMenu(event.clientX, event.clientY);
+      }
+    }
+  }
+
+  showTranslationMenu(x: number, y: number) {
+    const menu = document.createElement('div');
+    menu.innerHTML = '<button id="translate-btn">翻译</button>';
+    menu.style.position = 'absolute';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.backgroundColor = 'white';
+    menu.style.padding = '5px';
+    menu.style.border = '1px solid #ccc';
+    menu.style.borderRadius = '3px';
+    menu.style.zIndex = '1000';
+    document.body.appendChild(menu);
+
+    const translateBtn = document.getElementById('translate-btn');
+    if (translateBtn) {
+      translateBtn.addEventListener('click', () => {
+        this.translateSelectedText();
+        document.body.removeChild(menu);
+      });
+    }
+
+    // 点击其他地方时关闭菜单
+    document.addEventListener(
+      'click',
+      () => {
+        if (document.body.contains(menu)) {
+          document.body.removeChild(menu);
+        }
+      },
+      { once: true },
+    );
+  }
+
+  translateSelectedText() {
+    const selection = window.getSelection();
+    if (selection) {
+      const selectedText = selection.toString().trim();
+      if (selectedText) {
+        const formData = new FormData();
+        formData.append('text', selectedText);
+
+        this.http.post(`${environment.apiUrl}/chat/translate`, formData).subscribe({
+          next: (response: any) => {
+            this.translatedText = response.translation;
+            this.showPopup = true;
+          },
+          error: (error) => {
+            console.error('Translation failed', error);
+            this.translatedText = '翻译出错，请重试。';
+            this.showPopup = true;
+          },
+        });
+      }
+    }
+  }
+
+  closePopup() {
+    this.showPopup = false;
   }
 }
