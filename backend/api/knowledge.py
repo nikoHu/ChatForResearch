@@ -1,6 +1,5 @@
 import os
 import structlog
-import pymupdf4llm
 from pathlib import Path
 from uuid import uuid4
 from typing import List, Any
@@ -12,8 +11,12 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from langchain_qdrant import QdrantVectorStore
 from langchain_ollama import OllamaEmbeddings
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from unstructured.partition.pdf import partition_pdf
+from unstructured.partition.text import partition_text
+from unstructured.partition.md import partition_md
+from unstructured.chunking.title import chunk_by_title
+from langchain_core.documents import Document
 
 logger = structlog.get_logger()
 
@@ -72,59 +75,36 @@ def process_file(
     replaceSpaces: bool,
     separator: str,
     username: str,
-) -> List[Any]:
+) -> List[Document]:
     file_path = UPLOAD_DIRECTORY / username / knowledgeName / fileName
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
     file_extension = file_path.suffix.lower()
 
-    # 定义不同文件类型的分隔符
-    markdown_separators = [
-        "\n#{1,6} ",
-        "```\n",
-        "\n\\*\\*\\*+\n",
-        "\n---+\n",
-        "\n___+\n",
-        "\n\n",
-        "\n",
-        " ",
-        "",
-    ]
-    text_separators = ["\n\n", "\n", " ", ""]
+    # Partition the file based on its type
+    if file_extension == ".pdf":
+        elements = partition_pdf(filename=str(file_path), strategy="fast")
+    elif file_extension == ".md":
+        elements = partition_md(filename=str(file_path))
+    elif file_extension == ".txt":
+        elements = partition_text(filename=str(file_path))
 
-    if separator:
-        markdown_separators.append(separator)
-        text_separators.append(separator)
+    # Chunk the elements by title
+    chunks = chunk_by_title(elements, max_characters=maxLength, overlap=overlapLength)
 
-    def get_splitter(separators):
-        return RecursiveCharacterTextSplitter(
-            chunk_size=maxLength, chunk_overlap=overlapLength, separators=separators
-        )
+    # Convert chunks to Documents
+    documents = []
+    for element in chunks:
+        metadata = element.metadata.to_dict()
+        metadata = {'source': str(file_path)}
+        page_content = element.text
 
-    if file_extension in [".pdf", ".md"]:
-        if file_extension == ".pdf":
-            content = pymupdf4llm.to_markdown(str(file_path))
-        else:
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read()
+        if replaceSpaces:
+            page_content = page_content.replace("\n", " ").replace("\t", " ").replace("  ", " ")
 
-        splitter = get_splitter(markdown_separators)
-        docs = splitter.create_documents([content])
-    else:
-        loader = TextLoader(str(file_path))
-        documents = loader.load()
-
-        splitter = get_splitter(text_separators)
-        docs = splitter.split_documents(documents)
-
-    if replaceSpaces:
-        for doc in docs:
-            doc.page_content = (
-                doc.page_content.replace("\n", " ").replace("\t", " ").replace("  ", " ")
-            )
-
-    return docs
+        documents.append(Document(page_content=page_content, metadata=metadata))
+    return documents
 
 
 @router.post("/preview-segments")
@@ -215,7 +195,6 @@ async def create_vector_db(
 
         uuids = [str(uuid4()) for _ in range(len(docs))]
         store[f"{collection}{fileName}"] = uuids
-        print(store)
         vector_store.add_documents(docs, ids=uuids)
         return {"message": "Vector DB created successfully"}
 
@@ -362,7 +341,6 @@ async def recall(
             raise HTTPException(status_code=400, detail="Invalid index_mode")
 
         logger.info("recall_success")
-        print(results)
         return {"message": "Recall successful", "results": results}
 
     except Exception as e:
