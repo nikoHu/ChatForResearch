@@ -375,10 +375,10 @@ def get_file(knowledge_name: str, filename: str):
     try:
         FILE_DIR = "uploads"
         file_path = os.path.join(FILE_DIR, "admin", knowledge_name, filename)
-        
+
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="File not found")
-        
+
         return FileResponse(file_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,11 +1,20 @@
 <div class="flex h-full w-full flex-row items-center justify-center">
   <!--left panel-->
-  <div #leftPanel [style.width.%]="leftWidth" class="h-full">
-    @if (pdfSrc) {
+  <div
+    #leftPanel
+    [style.width.%]="leftWidth"
+    class="h-full"
+  >
+    @if (pdfSrc && !uploading) {
       <!-- PDF预览 -->
       <div class="flex h-full flex-col items-center justify-center">
-        <div class="flex h-[5%] cursor-pointer items-center" (click)="pdfSrc = ''">
-          <div class="w-fit rounded-md bg-blue-500 px-4 py-1 text-sm font-medium text-white">返回</div>
+        <div class="flex h-[5%] w-[95%] items-center justify-center space-x-2">
+          <div
+            class="w-fit cursor-pointer rounded-md bg-blue-500 px-4 py-1 text-sm font-medium text-white"
+            (click)="back()"
+          >
+            返回
+          </div>
         </div>
         <pdf-viewer
           [src]="pdfSrc"
@@ -17,6 +26,7 @@
           [zoom-scale]="'page-width'"
           [stick-to-page]="false"
           [render-text]="true"
+          [render-text-mode]="2"
           [external-link-target]="'blank'"
           [autoresize]="true"
           [show-borders]="false"
@@ -60,7 +70,10 @@
               </div>
             </div>
           }
-          <dialog id="knowledge" class="modal">
+          <dialog
+            id="knowledge"
+            class="modal"
+          >
             <div class="modal-box">
               <h3 class="mb-5 text-lg font-bold">选择引用知识库</h3>
               @for (item of knowledges; track item) {
@@ -124,7 +137,10 @@
                 </svg>
                 <span class="text-sm">联网搜索</span>
               </div>
-              <input type="checkbox" class="toggle" />
+              <input
+                type="checkbox"
+                class="toggle"
+              />
             </div>
             <div class="flex flex-row items-center justify-between rounded-md bg-white px-2 py-2 shadow-sm">
               <div class="flex flex-row items-center justify-center space-x-1">
@@ -145,23 +161,40 @@
 
                 <span class="text-sm">代码解释器</span>
               </div>
-              <input type="checkbox" class="toggle" />
+              <input
+                type="checkbox"
+                class="toggle"
+              />
             </div>
           </div>
         </div>
         <div class="flex h-fit flex-col rounded-xl bg-base-200 px-3 pb-4 pt-2">
-          <div class="mb-2 block font-extrabold">预览PDF</div>
+          <div class="mb-2 block font-extrabold">ChatPDF</div>
+          <div class="mb-2 block text-[12px] text-gray-500">与PDF对话</div>
           <div class="relative">
             <input
               type="file"
-              (change)="onFileSelected($event)"
+              (change)="selectPdf($event)"
               accept="application/pdf"
               class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              [class.pointer-events-none]="uploading"
             />
             <div
-              class="flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm transition-colors duration-300 hover:bg-gray-50"
+              [class]="
+                uploading
+                  ? 'bg-white hover:bg-gray-50'
+                  : 'cursor-wait bg-gray-100' +
+                    ' flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm transition-colors duration-300'
+              "
             >
-              点击选择PDF文件
+              @if (uploading) {
+                <div class="flex items-center justify-center space-x-2 py-2">
+                  <span class="loading loading-spinner loading-sm"></span>
+                  <span>解析中...</span>
+                </div>
+              } @else {
+                点击选择PDF文件
+              }
             </div>
           </div>
         </div>
@@ -170,10 +203,20 @@
   </div>
 
   <!-- Resizer -->
-  <div class="h-full w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400" (mousedown)="onMouseDown($event)"></div>
+  <div
+    class="h-full w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
+    (mousedown)="onMouseDown($event)"
+  ></div>
 
   <!--right panel-->
-  <div class="h-full" #rightPanel [style.width.%]="100 - leftWidth">
-    <chat [mode]="studio_mode"></chat>
+  <div
+    class="h-full"
+    #rightPanel
+    [style.width.%]="100 - leftWidth"
+  >
+    <chat
+      [mode]="studio_mode"
+      [pdfname]="pdfname"
+    ></chat>
   </div>
 </div>

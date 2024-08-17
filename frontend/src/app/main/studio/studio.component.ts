@@ -1,11 +1,13 @@
 import { Component, HostListener, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { Chat } from '../chat/chat.component';
+import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { GlobalStateService } from '../../services/global-state.service';
 import { PdfViewerModule } from 'ng2-pdf-viewer';
+import { delay } from 'rxjs';
 
 interface KnowledgeBase {
   id: number;
@@ -16,7 +18,7 @@ interface KnowledgeBase {
 @Component({
   selector: 'studio',
   standalone: true,
-  imports: [Chat, LucideAngularModule, PdfViewerModule],
+  imports: [Chat, FormsModule, LucideAngularModule, PdfViewerModule],
   templateUrl: './studio.component.html',
 })
 export class Studio {
@@ -29,9 +31,9 @@ export class Studio {
   maxLeftWidth = 60; // 最大左侧宽度 (7:3)
 
   studio_mode = 'studio_default';
+  pdfname = '';
   knowledges: any = [];
   username = '';
-  pdfSrc: string | Uint8Array | null = null;
   constructor(
     private el: ElementRef,
     private http: HttpClient,
@@ -104,9 +106,22 @@ export class Studio {
     this.studio_mode = 'studio_default';
   }
 
-  onFileSelected(event: Event): void {
+  back() {
+    this.pdfSrc = '';
+    this.studio_mode = 'studio_default';
+  }
+
+  pdfSrc: string | Uint8Array | null = null;
+  selectedFile: File | null = null;
+  uploading = false;
+
+  selectPdf(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file && file.type === 'application/pdf') {
+      this.selectedFile = file;
+      this.pdfname = file.name;
+      this.uploadPdf();
+      this.studio_mode = 'studio_pdf';
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
         if (e.target?.result instanceof ArrayBuffer) {
@@ -119,6 +134,30 @@ export class Studio {
     } else {
       alert('请选择一个PDF文件');
       this.pdfSrc = null;
+      this.selectedFile = null;
     }
+  }
+
+  uploadPdf() {
+    if (!this.selectedFile) {
+      alert('请选择一个PDF文件');
+      return;
+    }
+
+    this.uploading = true;
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    formData.append('username', this.username);
+
+    this.http.post(`${environment.apiUrl}/chat/parser-pdf`, formData).subscribe({
+      next: (response) => {
+        console.log('PDF uploaded successfully', response);
+        this.uploading = false;
+      },
+      error: (error) => {
+        console.error('Upload failed', error);
+        this.uploading = false;
+      },
+    });
   }
 }

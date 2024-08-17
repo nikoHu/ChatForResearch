@@ -1,6 +1,15 @@
-import { Component, ElementRef, ViewChild, OnInit, AfterViewChecked, Input,  OnChanges, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  OnInit,
+  AfterViewChecked,
+  Input,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';;
+import { CommonModule } from '@angular/common';
 import { NgClass } from '@angular/common';
 import { MarkdownModule } from 'ngx-markdown';
 import { ActivatedRoute } from '@angular/router';
@@ -29,10 +38,10 @@ interface HistoryChatResponse {
   imports: [FormsModule, CommonModule, MarkdownModule, NgClass],
 })
 export class Chat implements OnInit, AfterViewChecked {
-  messages: { id: number; content: string; role: string ; source: string; url: string}[] = [];
+  messages: { id: number; content: string; role: string; source: string; url: string }[] = [];
   chatId: string | null = null;
   selectedModel = 'glm4';
-  models = []
+  models = [];
   newMessage = '';
   loading = false;
   userScrolled = false;
@@ -40,7 +49,9 @@ export class Chat implements OnInit, AfterViewChecked {
   temperature = 5;
   username = '';
   source = '';
+  apiEndpoint = 'chat/completions';
   @Input() mode: string = '';
+  @Input() pdfname: string = '';
 
   @ViewChild('textarea') textarea!: ElementRef<HTMLTextAreaElement>;
   isFullStyle = true;
@@ -130,6 +141,7 @@ export class Chat implements OnInit, AfterViewChecked {
   }
 
   private resetState() {
+    this.messages = [];
     this.loadHistoryChat(this.username, this.mode);
   }
 
@@ -151,13 +163,16 @@ export class Chat implements OnInit, AfterViewChecked {
 
     if (this.globalStateService.studioKnowledgeName) {
       requestData.knowledge_name = this.globalStateService.studioKnowledgeName;
+      this.apiEndpoint = 'chat/knowledge-completions';
     }
 
-    const apiEndpoint = this.globalStateService.studioKnowledgeName
-      ? 'chat/knowledge-completions'
-      : 'chat/completions';
+    if (this.mode === 'studio_pdf') {
+      requestData.filename = this.pdfname;
+      console.log('PDF name:', this.pdfname);
+      this.apiEndpoint = 'chat/pdf-completions';
+    }
 
-    this.chatService.fetchPost(requestData, apiEndpoint).subscribe({
+    this.chatService.fetchPost(requestData, this.apiEndpoint).subscribe({
       next: (data: any) => {
         if (data.type === 'answer') {
           // 处理答案
@@ -166,7 +181,8 @@ export class Chat implements OnInit, AfterViewChecked {
         } else if (data.type === 'source') {
           // 处理源文档
           this.messages[this.messages.length - 1].source = data.content;
-          this.messages[this.messages.length - 1].url = `${this.username}/${this.globalStateService.studioKnowledgeName}/${data.content}`;
+          this.messages[this.messages.length - 1].url =
+            `${this.username}/${this.globalStateService.studioKnowledgeName}/${data.content}`;
           console.log('Source:', data.content);
         }
       },
@@ -186,7 +202,7 @@ export class Chat implements OnInit, AfterViewChecked {
     console.log('Payload:', payload);
 
     const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     });
 
     this.http.post<HistoryChatResponse>(url, payload, { headers }).subscribe({
@@ -201,24 +217,25 @@ export class Chat implements OnInit, AfterViewChecked {
       },
       error: (error) => {
         console.error('Error fetching chat history:', error);
-      }
+      },
     });
   }
 
   resetChat(username: string, mode: string): void {
     const url = 'http://localhost:8000/chat/reset-chat';
+    const filename = this.pdfname;
 
     const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     });
 
-    this.http.post<any>(url, { username, mode }, { headers }).subscribe({
+    this.http.post<any>(url, { username, mode, filename }, { headers }).subscribe({
       next: (response) => {
         console.log('Chat reset:', response);
       },
       error: (error) => {
         console.error('Error fetching chat history:', error);
-      }
+      },
     });
   }
 
@@ -229,7 +246,7 @@ export class Chat implements OnInit, AfterViewChecked {
       },
       error: (error) => {
         console.error('Error fetching models:', error);
-      }
+      },
     });
   }
 

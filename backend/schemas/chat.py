@@ -21,8 +21,19 @@ class KnowledgeChat(Chat):
     history_length: int = Field(default=50)
 
 
+class PdfChat(Chat):
+    mode: str
+    username: str
+    filename: str
+    model: str = Field(default="llama3.1")
+    message: str
+    temperature: float = Field(default=0.5)
+    history_length: int = Field(default=50)
+
+
 class ResetChat(BaseModel):
     username: str
+    filename: str
     mode: str
 
 

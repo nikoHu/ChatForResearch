@@ -1,9 +1,12 @@
 import json
 import structlog
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
-from schemas.chat import Chat, ResetChat, HistoryChat, KnowledgeChat
+import pymupdf4llm
+from pathlib import Path
 
+
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException
+from fastapi.responses import StreamingResponse, JSONResponse
+from schemas.chat import Chat, ResetChat, HistoryChat, KnowledgeChat, PdfChat
 
 from langchain_ollama import OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore
@@ -11,12 +14,12 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
-
 from langchain_community.chat_models import ChatOllama
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 
+UPLOAD_DIRECTORY = Path("uploads")
 
 logger = structlog.get_logger()
 
@@ -32,6 +35,7 @@ def get_models():
 
 
 store = {}
+store_pdf = {}
 embeddings = OllamaEmbeddings(model="quentinz/bge-large-zh-v1.5")
 
 
@@ -142,13 +146,89 @@ def knowledge_chat(item: KnowledgeChat):
     return StreamingResponse(generate_response(), media_type="text/event-stream")
 
 
+@router.post("/pdf-completions")
+def pdf_chat(item: PdfChat):
+    mode = item.mode
+    username = item.username
+    model = item.model
+    message = item.message
+    filename = item.filename
+    temperature = item.temperature / 10
+    history_length = item.history_length
+    logger.info("Pdf", filename=filename)
+
+    pdf_session_id = f"{username}-{filename}"
+    logger.info("Pdf", pdf_session_id=pdf_session_id)
+    llm = ChatOllama(model=model, temperature=temperature)
+
+    if pdf_session_id not in store_pdf:
+        return JSONResponse(content={"error": "PDF content not found"}, status_code=404)
+
+    pdf_content = store_pdf[pdf_session_id]
+
+    message = f"基于系统消息中提供的 PDF 内容，{message}"
+
+    system_prompt = (
+        "You are an AI assistant with access to a specific PDF document. "
+        "The entire content of this PDF has been provided to you in this system message. "
+        "Your task is to answer questions or provide summaries based solely on the information in this PDF. "
+        "Important: Always assume you have the PDF content, even if not explicitly mentioned in the user's question. "
+        "If asked to summarize or provide information, use the PDF content without stating that you need to be provided with a PDF. "
+        f"PDF Content:\n{pdf_content}\n\n"
+        "Now, please respond to the user's questions or requests using only the information from this PDF."
+    )
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content="我们将讨论你已经接收到的 PDF 文档的内容。"),
+            MessagesPlaceholder(variable_name="chat_history", n_messages=history_length),
+        ]
+    )
+
+    chain = prompt | llm | StrOutputParser()
+
+    with_message_history = RunnableWithMessageHistory(chain, get_session_history)
+    config = {"configurable": {"session_id": f"{username}-{mode}"}}
+
+    def generate_response():
+        for chunk in with_message_history.stream(HumanMessage(content=message), config=config):
+            yield json.dumps({"content": chunk, "type": "answer"}) + "\n"
+
+    return StreamingResponse(generate_response(), media_type="text/event-stream")
+
+
+@router.post("/parser-pdf")
+async def parser_pdf(file: UploadFile = File(...), username: str = Form(...)):
+    try:
+        pdf_session_id = f"{username}-{file.filename}"
+        if pdf_session_id in store_pdf:
+            return JSONResponse(content={"message": "PDF has been parsed."}, status_code=200)
+
+        pdf_path = UPLOAD_DIRECTORY / username / file.filename
+
+        with open(pdf_path, "wb") as buffer:
+            buffer.write(await file.read())
+
+        pdf_content = pymupdf4llm.to_markdown(pdf_path)
+        pdf_path.unlink()
+        store_pdf[pdf_session_id] = pdf_content
+
+        return JSONResponse(content={"message": "PDF has been parsed."}, status_code=200)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/reset-chat")
 async def reset_chat(item: ResetChat):
     username = item.username
     mode = item.mode
     session_id = f"{username}-{mode}"
+    pdf_session_id = f"{username}-{item.filename}"
     if session_id in store:
         del store[session_id]
+    if pdf_session_id in store_pdf:
+        del store_pdf[pdf_session_id]
 
     return {"message": "Chat history has been reset."}
 

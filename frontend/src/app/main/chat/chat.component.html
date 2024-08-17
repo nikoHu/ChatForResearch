@@ -1,5 +1,5 @@
 <div class="flex h-full w-full flex-col">
-  <div class="relative flex w-full basis-1/12 flex-row rounded-2xl py-3 pl-3">
+  <div class="relative flex w-full flex-grow flex-row rounded-2xl py-3 pl-3">
     <select (change)="onSelectChange($event)" class="select select-sm">
       @for (model of models; track model) {
         <option [value]="model" [selected]="model === selectedModel">{{ model | uppercase }}</option>
