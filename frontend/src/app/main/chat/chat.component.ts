@@ -17,6 +17,7 @@ import { ChatService } from '../../services/chat.service';
 import { AuthService } from '../../services/auth.service';
 import { GlobalStateService } from '../../services/global-state.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface HistoryChat {
   username: string;
@@ -40,7 +41,7 @@ interface HistoryChatResponse {
 export class Chat implements OnInit, AfterViewChecked {
   messages: { id: number; content: string; role: string; source: string; url: string }[] = [];
   chatId: string | null = null;
-  selectedModel = 'glm4';
+  selectedModel = 'llama3.1';
   models = [];
   newMessage = '';
   loading = false;
@@ -197,7 +198,7 @@ export class Chat implements OnInit, AfterViewChecked {
   }
 
   loadHistoryChat(username: string, mode: string): void {
-    const url = 'http://localhost:8000/chat/load-history-chat';
+    const url = `${environment.apiUrl}/chat/load-history-chat`;
     const payload: HistoryChat = { username, mode };
     console.log('Payload:', payload);
 
@@ -222,7 +223,7 @@ export class Chat implements OnInit, AfterViewChecked {
   }
 
   resetChat(username: string, mode: string): void {
-    const url = 'http://localhost:8000/chat/reset-chat';
+    const url = `${environment.apiUrl}/chat/reset-chat`;
     const filename = this.pdfname;
 
     const headers = new HttpHeaders({
@@ -240,7 +241,7 @@ export class Chat implements OnInit, AfterViewChecked {
   }
 
   fetchModels() {
-    this.http.get<any>('http://localhost:8000/chat/models').subscribe({
+    this.http.get<any>(`${environment.apiUrl}/chat/models`).subscribe({
       next: (response) => {
         this.models = response.models;
       },
@@ -253,7 +254,7 @@ export class Chat implements OnInit, AfterViewChecked {
   openFile(source: string) {
     if (source) {
       const [knowledgeName, filename] = source.split('/');
-      const url = `http://localhost:8000/knowledge/${source}`;
+      const url = `${environment}knowledge/${source}`;
       window.open(url, '_blank');
     }
   }
