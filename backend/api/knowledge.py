@@ -1,4 +1,5 @@
 import os
+import yaml
 import structlog
 from pathlib import Path
 from uuid import uuid4
@@ -20,6 +21,18 @@ from langchain_core.documents import Document
 
 logger = structlog.get_logger()
 
+
+def read_config(file_path):
+    """
+    读取配置文件
+    """
+    with open(file_path, "r") as file:
+        config = yaml.safe_load(file)
+    return config
+
+
+config = read_config("config.yaml")
+
 # Configuration constants
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
 UPLOAD_DIRECTORY = Path("uploads")
@@ -31,15 +44,13 @@ UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
-client = QdrantClient(url="http://localhost:6333")
-embeddings = OllamaEmbeddings(model="quentinz/bge-large-zh-v1.5")
+client = QdrantClient(url=config["qdrant_endpoint"])
+embeddings = OllamaEmbeddings(model=config["embedding_model"])
 store = {}
 
 
 @router.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...), knowledgeName: str = Form(...), username: str = Form(...)
-):
+async def upload_file(file: UploadFile = File(...), knowledgeName: str = Form(...), username: str = Form(...)):
     try:
         file_extension = Path(file.filename).suffix.lower()
         if file_extension not in ALLOWED_EXTENSIONS:
@@ -97,7 +108,7 @@ def process_file(
     documents = []
     for element in chunks:
         metadata = element.metadata.to_dict()
-        metadata = {'source': str(file_path)}
+        metadata = {"source": str(file_path)}
         page_content = element.text
 
         if replaceSpaces:
@@ -129,9 +140,7 @@ async def preview_segments(
             username=username,
         )
 
-        texts = process_file(
-            knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username
-        )
+        texts = process_file(knowledgeName, fileName, maxLength, overlapLength, replaceSpaces, separator, username)
         contents = [content.page_content for content in texts]
 
         logger.info("preview_segments_success", segment_count=len(contents))
@@ -207,9 +216,7 @@ async def create_vector_db(
 async def get_all_knowledge(username: str = Form(...)):
     try:
         logger.info("get_all_knowledge_request", username=username)
-        knowledge_folders = [
-            folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()
-        ]
+        knowledge_folders = [folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()]
         logger.info("get_all_knowledge_success", knowledge_folders=knowledge_folders)
         return {"message": "All knowledge fetched successfully", "knowledges": knowledge_folders}
 
@@ -241,15 +248,8 @@ async def delete_knowledge(knowledgeName: str = Form(...), username: str = Form(
 async def get_all_files(knowledgeName: str = Form(...), username: str = Form(...)):
     try:
         logger.info("get_all_files_request", knowledge_name=knowledgeName, username=username)
-        files = [
-            file
-            for file in (UPLOAD_DIRECTORY / username / knowledgeName).iterdir()
-            if file.is_file()
-        ]
-        files_dict = [
-            {"name": file.name, "size": file.stat().st_size, "time": file.stat().st_mtime}
-            for file in files
-        ]
+        files = [file for file in (UPLOAD_DIRECTORY / username / knowledgeName).iterdir() if file.is_file()]
+        files_dict = [{"name": file.name, "size": file.stat().st_size, "time": file.stat().st_mtime} for file in files]
         logger.info("get_all_files_success", files=files)
         return {"message": "All files fetched successfully", "files": files_dict}
 
@@ -259,9 +259,7 @@ async def get_all_files(knowledgeName: str = Form(...), username: str = Form(...
 
 
 @router.post("/delete-file")
-async def delete_file(
-    knowledgeName: str = Form(...), fileName: str = Form(...), username: str = Form(...)
-):
+async def delete_file(knowledgeName: str = Form(...), fileName: str = Form(...), username: str = Form(...)):
     try:
         logger.info(
             "delete_file_request",

@@ -1,6 +1,7 @@
 import json
 import structlog
 import pymupdf4llm
+import yaml
 from pathlib import Path
 
 
@@ -26,17 +27,33 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def read_config(file_path):
+    """
+    读取配置文件
+    """
+    with open(file_path, "r") as file:
+        config = yaml.safe_load(file)
+    return config
+
+
+config = read_config("config.yaml")
+
+
 @router.get("/models")
 def get_models():
     """
     获取可用的模型列表
     """
-    return {"models": ["glm4", "llama3.1"]}
+
+    # 提取模型列表
+    models = config.get("llm_models", [])
+
+    return {"models": models}
 
 
 store = {}
 store_pdf = {}
-embeddings = OllamaEmbeddings(model="quentinz/bge-large-zh-v1.5")
+embeddings = OllamaEmbeddings(model=config["embedding_model"])
 
 
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
@@ -50,9 +67,7 @@ def translate(text: str = Form(...)):
     try:
         llm = ChatOllama(model="llama3.1")
 
-        system_template = (
-            "Translate the following into {language}. Don't need to extral explaination."
-        )
+        system_template = "Translate the following into {language}. Don't need to extral explaination."
         prompt = ChatPromptTemplate.from_messages([("system", system_template), ("user", "{text}")])
 
         chain = prompt | llm | StrOutputParser()
@@ -78,9 +93,7 @@ def chat(item: Chat):
 
     prompt = ChatPromptTemplate.from_messages(
         [
-            SystemMessage(
-                "You are a helpful assistant. Answer all questions to the best of your ability."
-            ),
+            SystemMessage("You are a helpful assistant. Answer all questions to the best of your ability."),
             MessagesPlaceholder(variable_name="chat_history", n_messages=history_length),
         ]
     )
@@ -158,9 +171,7 @@ def knowledge_chat(item: KnowledgeChat):
 
         if context:
             print(context[0].metadata["source"].split("/")[-1])
-            yield json.dumps(
-                {"content": context[0].metadata["source"].split("/")[-1], "type": "source"}
-            ) + "\n"
+            yield json.dumps({"content": context[0].metadata["source"].split("/")[-1], "type": "source"}) + "\n"
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
 
