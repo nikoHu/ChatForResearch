@@ -2,8 +2,9 @@
 
 llm_models:
   - llama3.1
-  - glm4
 
 embedding_model: bge-m3
 
-qdrant_endpoint: http://localhost:6333
+qdrant_url: http://localhost:6333
+
+ollama_url: http://localhost:11434

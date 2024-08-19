@@ -44,7 +44,7 @@ UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
 VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
-client = QdrantClient(url=config["qdrant_endpoint"])
+client = QdrantClient(url=config["qdrant_url"])
 embeddings = OllamaEmbeddings(model=config["embedding_model"])
 store = {}
 
