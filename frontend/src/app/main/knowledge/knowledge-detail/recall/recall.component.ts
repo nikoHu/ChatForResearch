@@ -80,10 +80,16 @@ export class Recall {
     this.http.post(`${environment.apiUrl}/knowledge/recall`, formData).subscribe({
       next: (data: any) => {
         console.log('Recall result:', data);
-        this.results = data.results.map((o: any) => ({
-          text: o.content,
-          score: o.score.toFixed(3),
-        }));
+        if (data.search_type !== 'full-text') {
+          this.results = data.results.map((o: any) => ({
+            text: o.content,
+            score: o.score.toFixed(3),
+          }));
+        } else {
+          this.results = data.results.map((o: any) => ({
+            text: o.content,
+          }));
+        }
       },
       error: (error) => {
         console.error('Error during recall:', error);

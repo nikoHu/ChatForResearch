@@ -36,7 +36,7 @@
             [class.bg-blue-50]="activeSearchType === searchType.type"
             [class.bg-white]="activeSearchType !== searchType.type"
             [class.hover:bg-gray-50]="activeSearchType !== searchType.type"
-            (click)="setActiveSearchType(searchType.type)"
+            (click)="setActiveSearchType(searchType.type); results = []"
           >
             <div class="mb-2 flex items-center justify-between">
               <span class="font-semibold">{{ searchType.title }}</span>
@@ -142,9 +142,11 @@
     <div class="space-y-4 overflow-auto p-4">
       @for (segment of results; track segment; let i = $index) {
         <div class="rounded-xl bg-base-200 p-3">
-          <div class="mb-1 text-sm text-gray-500">
-            <span>score {{ segment.score }} </span>
-          </div>
+          @if (activeSearchType !== 'full-text') {
+            <div class="mb-1 text-sm text-gray-500">
+              <span>score {{ segment.score }} </span>
+            </div>
+          }
           <p class="text-sm">{{ segment.text }}</p>
         </div>
       }

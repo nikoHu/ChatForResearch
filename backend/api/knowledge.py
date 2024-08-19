@@ -9,8 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
-from langchain_qdrant import QdrantVectorStore
+from langchain_qdrant import QdrantVectorStore, FastEmbedSparse, RetrievalMode
 from langchain_ollama import OllamaEmbeddings
 
 from unstructured.partition.pdf import partition_pdf
@@ -45,7 +44,8 @@ VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
 client = QdrantClient(url=config["qdrant_url"])
-embeddings = OllamaEmbeddings(model=config["embedding_model"])
+embedding_model = OllamaEmbeddings(model=config["embedding_model"])
+sparse_model = FastEmbedSparse(model_name="Qdrant/bm25")
 store = {}
 
 
@@ -176,35 +176,34 @@ async def create_vector_db(
 
         if client.collection_exists(collection):
             vector_store = QdrantVectorStore.from_existing_collection(
-                embedding=embeddings,
+                embedding=embedding_model,
+                sparse_embedding=sparse_model,
+                retrieval_mode=RetrievalMode.HYBRID,
                 collection_name=collection,
             )
             logger.info("vector_db_already_exists")
         else:
-            client.create_collection(
-                collection_name=collection,
-                vectors_config=VectorParams(size=1024, distance=Distance.COSINE),
+            docs = process_file(
+                knowledgeName,
+                fileName,
+                maxLength,
+                overlapLength,
+                replaceSpaces,
+                separator,
+                username,
             )
 
-            vector_store = QdrantVectorStore(
-                client=client,
+            uuids = [str(uuid4()) for _ in range(len(docs))]
+            store[f"{collection}{fileName}"] = uuids
+            vector_store = QdrantVectorStore.from_documents(
+                docs,
+                ids=uuids,
                 collection_name=collection,
-                embedding=embeddings,
+                embedding=embedding_model,
+                sparse_embedding=sparse_model,
+                retrieval_mode=RetrievalMode.HYBRID,
             )
 
-        docs = process_file(
-            knowledgeName,
-            fileName,
-            maxLength,
-            overlapLength,
-            replaceSpaces,
-            separator,
-            username,
-        )
-
-        uuids = [str(uuid4()) for _ in range(len(docs))]
-        store[f"{collection}{fileName}"] = uuids
-        vector_store.add_documents(docs, ids=uuids)
         return {"message": "Vector DB created successfully"}
 
     except Exception as e:
@@ -274,7 +273,9 @@ async def delete_file(knowledgeName: str = Form(...), fileName: str = Form(...),
 
         collection = f"{username}{knowledgeName}"
         vector_store = QdrantVectorStore.from_existing_collection(
-            embedding=embeddings,
+            embedding=embedding_model,
+            sparse_embedding=sparse_model,
+            retrieval_mode=RetrievalMode.HYBRID,
             collection_name=collection,
         )
         vector_store.delete(ids=store[f"{collection}{fileName}"])
@@ -307,13 +308,15 @@ async def recall(
         )
 
         collection = f"{username}{selectedKnowledgeName}"
-        vector_store = QdrantVectorStore.from_existing_collection(
-            embedding=embeddings,
-            collection_name=collection,
-        )
 
         if index_mode == "vector":
-            found_docs = vector_store.similarity_search_with_score(query, k=limit)
+            vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embedding_model,
+                sparse_embedding=sparse_model,
+                retrieval_mode=RetrievalMode.DENSE,
+                collection_name=collection,
+            )
+            found_docs = vector_store.similarity_search_with_score(query, k=limit, score_threshold=certainty)
             results = []
             for document, score in found_docs:
                 results.append(
@@ -323,23 +326,45 @@ async def recall(
                         "score": score,
                     }
                 )
-        # elif index_mode == "full-text":
-        #     response = collection.query.bm25(
-        #         query=query, limit=limit, return_metadata=MetadataQuery(score=True)
-        #     )
-        # elif index_mode == "hybrid":
-        #     if certainty is None:
-        #         raise HTTPException(
-        #             status_code=400, detail="Certainty is required for hybrid search"
-        #         )
-        #     response = collection.query.hybrid(
-        #         query=query, alpha=0.75, return_metadata=MetadataQuery(score=True), limit=limit
-        #     )
+
+        elif index_mode == "full-text":
+            vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embedding_model,
+                sparse_embedding=sparse_model,
+                retrieval_mode=RetrievalMode.SPARSE,
+                collection_name=collection,
+            )
+            found_docs = vector_store.similarity_search(query, k=limit)
+            results = []
+            for document in found_docs:
+                results.append(
+                    {
+                        "content": document.page_content,
+                        "metadata": document.metadata,
+                    }
+                )
+        elif index_mode == "hybrid":
+            vector_store = QdrantVectorStore.from_existing_collection(
+                embedding=embedding_model,
+                sparse_embedding=sparse_model,
+                retrieval_mode=RetrievalMode.HYBRID,
+                collection_name=collection,
+            )
+            found_docs = vector_store.similarity_search_with_score(query, k=limit, score_threshold=certainty)
+            results = []
+            for document, score in found_docs:
+                results.append(
+                    {
+                        "content": document.page_content,
+                        "metadata": document.metadata,
+                        "score": score,
+                    }
+                )
         else:
             raise HTTPException(status_code=400, detail="Invalid index_mode")
 
         logger.info("recall_success")
-        return {"message": "Recall successful", "results": results}
+        return {"message": "Recall successful", "search_type": index_mode, "results": results}
 
     except Exception as e:
         logger.error("recall_error", error=str(e))
