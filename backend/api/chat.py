@@ -3,11 +3,14 @@ import structlog
 import pymupdf4llm
 import yaml
 from pathlib import Path
+from functools import lru_cache
+from typing import Dict, Any
 
-
+import orjson
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from schemas.chat import Chat, ResetChat, HistoryChat, KnowledgeChat, PdfChat
+
 
 from langchain_ollama import OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore
@@ -27,32 +30,34 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-def read_config(file_path):
-    """
-    读取配置文件
-    """
+# 使用 lru_cache 来缓存配置
+@lru_cache()
+def read_config(file_path: str) -> Dict[str, Any]:
     with open(file_path, "r") as file:
-        config = yaml.safe_load(file)
-    return config
+        return yaml.safe_load(file)
 
 
 config = read_config("config.yaml")
 
 
-@router.get("/models")
-def get_models():
-    """
-    获取可用的模型列表
-    """
-
-    # 提取模型列表
-    models = config.get("llm_models", [])
-
-    return {"models": models}
+# 使用 orjson 进行更快的 JSON 序列化
+def json_dumps(obj: Any) -> str:
+    return orjson.dumps(obj).decode()
 
 
-store = {}
-store_pdf = {}
+# 预加载模型
+llm_cache: Dict[tuple, ChatOllama] = {}
+
+
+def get_llm(model: str, temperature: float) -> ChatOllama:
+    key = (model, temperature)
+    if key not in llm_cache:
+        llm_cache[key] = ChatOllama(model=model, temperature=temperature)
+    return llm_cache[key]
+
+
+store: Dict[str, BaseChatMessageHistory] = {}
+store_pdf: Dict[str, str] = {}
 embeddings = OllamaEmbeddings(model=config["embedding_model"])
 
 
@@ -62,56 +67,48 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
     return store[session_id]
 
 
-@router.post("/translate")
-def translate(text: str = Form(...)):
-    try:
-        llm = ChatOllama(model="llama3.1")
+@router.get("/models")
+def get_models():
+    models = config.get("llm_models", [])
+    return {"models": models}
 
+
+@router.post("/translate")
+async def translate(text: str = Form(...)):
+    try:
+        llm = get_llm("llama3.1", 0.7)
         system_template = "Translate the following into {language}. Don't need to extral explaination."
         prompt = ChatPromptTemplate.from_messages([("system", system_template), ("user", "{text}")])
-
         chain = prompt | llm | StrOutputParser()
-        result = chain.invoke({"language": "chinese", "text": text})
+        result = await chain.ainvoke({"language": "chinese", "text": text})
         return {"translation": result}
-
     except Exception as e:
         logger.error("Translation error", error=str(e), text=text)
         return {"error": f"Translation failed: {str(e)}"}
 
 
 @router.post("/completions")
-def chat(item: Chat):
-    mode = item.mode
-    username = item.username
-    model = item.model
-    message = item.message
-    temperature = item.temperature / 10
-    history_length = item.history_length
-    logger.info("Chat", model=model)
-
-    llm = ChatOllama(model=model, temperature=temperature)
-
+async def chat(item: Chat):
+    llm = get_llm(item.model, item.temperature / 10)
     prompt = ChatPromptTemplate.from_messages(
         [
             SystemMessage("You are a helpful assistant. Answer all questions to the best of your ability."),
-            MessagesPlaceholder(variable_name="chat_history", n_messages=history_length),
+            MessagesPlaceholder(variable_name="chat_history", n_messages=item.history_length),
         ]
     )
-
     chain = prompt | llm | StrOutputParser()
-
     with_message_history = RunnableWithMessageHistory(chain, get_session_history)
-    config = {"configurable": {"session_id": f"{username}-{mode}"}}
+    config = {"configurable": {"session_id": f"{item.username}-{item.mode}"}}
 
-    def generate_response():
-        for chunk in with_message_history.stream(HumanMessage(content=message), config=config):
-            yield json.dumps({"content": chunk, "type": "answer"}) + "\n"
+    async def generate_response():
+        async for chunk in with_message_history.astream(HumanMessage(content=item.message), config=config):
+            yield json_dumps({"content": chunk, "type": "answer"}) + "\n"
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
 
 
 @router.post("/knowledge-completions")
-def knowledge_chat(item: KnowledgeChat):
+async def knowledge_chat(item: KnowledgeChat):
     mode = item.mode
     username = item.username
     model = item.model
@@ -160,10 +157,10 @@ def knowledge_chat(item: KnowledgeChat):
     config = {"configurable": {"session_id": f"{username}-{mode}"}}
     chain = conversational_rag_chain.pick(["context", "answer"])
 
-    def generate_response():
+    async def generate_response():
         context = ""
 
-        for chunk in chain.stream({"input": message}, config=config):
+        async for chunk in chain.astream({"input": message}, config=config):
             if context_chunk := chunk.get("context"):
                 context = context_chunk
             elif answer_chunk := chunk.get("answer"):
@@ -177,7 +174,7 @@ def knowledge_chat(item: KnowledgeChat):
 
 
 @router.post("/pdf-completions")
-def pdf_chat(item: PdfChat):
+async def pdf_chat(item: PdfChat):
     mode = item.mode
     username = item.username
     model = item.model
@@ -221,8 +218,8 @@ def pdf_chat(item: PdfChat):
     with_message_history = RunnableWithMessageHistory(chain, get_session_history)
     config = {"configurable": {"session_id": f"{username}-{mode}"}}
 
-    def generate_response():
-        for chunk in with_message_history.stream(HumanMessage(content=message), config=config):
+    async def generate_response():
+        async for chunk in with_message_history.astream(HumanMessage(content=message), config=config):
             yield json.dumps({"content": chunk, "type": "answer"}) + "\n"
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
@@ -251,24 +248,18 @@ async def parser_pdf(file: UploadFile = File(...), username: str = Form(...)):
 
 @router.post("/reset-chat")
 async def reset_chat(item: ResetChat):
-    username = item.username
-    mode = item.mode
-    session_id = f"{username}-{mode}"
-    pdf_session_id = f"{username}-{item.filename}"
+    session_id = f"{item.username}-{item.mode}"
+    pdf_session_id = f"{item.username}-{item.filename}"
     if session_id in store:
         del store[session_id]
     if pdf_session_id in store_pdf:
         del store_pdf[pdf_session_id]
-
     return {"message": "Chat history has been reset."}
 
 
 @router.post("/load-history-chat")
-def load_history_chat(item: HistoryChat):
-    username = item.username
-    mode = item.mode
-    session_id = f"{username}-{mode}"
-
+async def load_history_chat(item: HistoryChat):
+    session_id = f"{item.username}-{item.mode}"
     if session_id not in store:
         return {"history_chat": []}
 
