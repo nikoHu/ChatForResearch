@@ -4,10 +4,12 @@ import structlog
 
 from contextlib import asynccontextmanager
 from api import chat, knowledge, user
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 logger = structlog.get_logger()
+
 
 def read_config(file_path):
     """
@@ -29,9 +31,7 @@ async def preload_model(model_name, timeout=300):
     """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{ollama_url}/api/generate", json={"model": model_name, "keep_alive": -1}
-            )
+            response = await client.post(f"{ollama_url}/api/generate", json={"model": model_name, "keep_alive": -1})
             if response.status_code == 200:
                 logger.info(f"Model {model_name} preloaded successfully")
             else:
@@ -71,6 +71,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+# 全局异常处理
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception", error=str(exc), url=str(request.url))
+    return JSONResponse(status_code=500, content={"message": "An unexpected error occurred. Please try again later."})
 
 
 # CORS 设置
