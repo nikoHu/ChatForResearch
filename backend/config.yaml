@@ -5,6 +5,8 @@ llm_models:
 
 embedding_model: bge-m3
 
+sparse_model: Qdrant/bm42-all-minilm-l6-v2-attentions
+
 qdrant_url: http://localhost:6333
 
 ollama_url: http://localhost:11434

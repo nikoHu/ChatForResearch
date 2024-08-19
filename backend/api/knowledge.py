@@ -45,7 +45,7 @@ VECTOR_DB_DIRECTORY.mkdir(parents=True, exist_ok=True)
 router = APIRouter()
 client = QdrantClient(url=config["qdrant_url"])
 embedding_model = OllamaEmbeddings(model=config["embedding_model"])
-sparse_model = FastEmbedSparse(model_name="Qdrant/bm25")
+sparse_model = FastEmbedSparse(model_name=config["sparse_model"])
 store = {}
 
 
