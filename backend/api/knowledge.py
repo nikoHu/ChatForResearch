@@ -173,6 +173,17 @@ async def create_vector_db(
         )
 
         collection = f"{username}{knowledgeName}"
+        docs = process_file(
+            knowledgeName,
+            fileName,
+            maxLength,
+            overlapLength,
+            replaceSpaces,
+            separator,
+            username,
+        )
+        uuids = [str(uuid4()) for _ in range(len(docs))]
+        store[f"{collection}{fileName}"] = uuids
 
         if client.collection_exists(collection):
             vector_store = QdrantVectorStore.from_existing_collection(
@@ -181,21 +192,9 @@ async def create_vector_db(
                 retrieval_mode=RetrievalMode.HYBRID,
                 collection_name=collection,
             )
+            vector_store.add_documents(docs, ids=uuids)
             logger.info("vector_db_already_exists")
         else:
-            docs = process_file(
-                knowledgeName,
-                fileName,
-                maxLength,
-                overlapLength,
-                replaceSpaces,
-                separator,
-                username,
-            )
-
-            uuids = [str(uuid4()) for _ in range(len(docs))]
-            store[f"{collection}{fileName}"] = uuids
-            print(store)
             vector_store = QdrantVectorStore.from_documents(
                 docs,
                 ids=uuids,
@@ -204,6 +203,7 @@ async def create_vector_db(
                 sparse_embedding=sparse_model,
                 retrieval_mode=RetrievalMode.HYBRID,
             )
+            logger.info("vector_db_created")
 
         return {"message": "Vector DB created successfully"}
 
