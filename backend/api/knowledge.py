@@ -195,6 +195,7 @@ async def create_vector_db(
 
             uuids = [str(uuid4()) for _ in range(len(docs))]
             store[f"{collection}{fileName}"] = uuids
+            print(store)
             vector_store = QdrantVectorStore.from_documents(
                 docs,
                 ids=uuids,
@@ -215,7 +216,12 @@ async def create_vector_db(
 async def get_all_knowledge(username: str = Form(...)):
     try:
         logger.info("get_all_knowledge_request", username=username)
-        knowledge_folders = [folder.name for folder in (UPLOAD_DIRECTORY / username).iterdir() if folder.is_dir()]
+        user_directory = UPLOAD_DIRECTORY / username
+        if not user_directory.exists():
+            logger.info("user_directory_not_found", username=username)
+            return {"message": "No knowledge found for this user", "knowledges": []}
+        
+        knowledge_folders = [folder.name for folder in user_directory.iterdir() if folder.is_dir()]
         logger.info("get_all_knowledge_success", knowledge_folders=knowledge_folders)
         return {"message": "All knowledge fetched successfully", "knowledges": knowledge_folders}
 
