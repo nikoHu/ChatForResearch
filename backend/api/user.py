@@ -25,3 +25,19 @@ async def login(user: User):
             detail="Incorrect password",
         )
     return {"message": "Login successful"}
+
+
+@router.post("/register")
+async def register(user: User):
+    db_user = get_user(user.username)
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists",
+        )
+    with open("./user_infos/user.json", "r") as f:
+        users = json.load(f)
+    users[user.username] = user.dict()
+    with open("./user_infos/user.json", "w") as f:
+        json.dump(users, f)
+    return {"message": "User created successfully"}

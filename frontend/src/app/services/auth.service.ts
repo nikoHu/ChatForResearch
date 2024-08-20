@@ -18,6 +18,14 @@ export class AuthService {
     );
   }
 
+  register(username: string, password: string) {
+    return this.http.post<any>(`${environment.apiUrl}/user/register`, { username, password }).pipe(
+      tap((res) => {
+        console.log(res.message);
+      }),
+    );
+  }
+
   isLoggedIn() {
     return Boolean(localStorage.getItem('username'));
   }

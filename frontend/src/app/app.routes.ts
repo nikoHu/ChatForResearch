@@ -8,6 +8,7 @@ import { Upload } from './main/knowledge/upload/upload.component';
 import { Split } from './main/knowledge/split/split.component';
 import { Finish } from './main/knowledge/finish/finish.component';
 import { LoginComponent } from './login/login/login.component';
+import { RegisterComponent } from './login/register/register.component';
 import { MainComponent } from './main/main.component';
 import { authGuard } from './services/auth.guard';
 import { KnowledgeDetail } from './main/knowledge/knowledge-detail/knowledge-detail.component';
@@ -17,6 +18,7 @@ import { Recall } from './main/knowledge/knowledge-detail/recall/recall.componen
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
   {
     path: '',
     component: MainComponent,

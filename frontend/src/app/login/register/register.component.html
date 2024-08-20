@@ -9,7 +9,7 @@
           <input
             type="text"
             name="username"
-            placeholder="username"
+            placeholder="Username"
             [(ngModel)]="username"
             class="input input-bordered"
           />
@@ -21,30 +21,39 @@
           <input
             type="password"
             name="password"
-            placeholder="password"
+            placeholder="Password"
             [(ngModel)]="password"
             class="input input-bordered"
             required
           />
+        </div>
+        <div class="form-control">
           <label class="label">
-            <a href="#" class="link-hover link label-text-alt">Forgot password?</a>
+            <span class="label-text">Confirm Password</span>
           </label>
+          <input
+            type="password"
+            name="confirmPassword"
+            placeholder="Confirm Password"
+            [(ngModel)]="confirmPassword"
+            class="input input-bordered"
+            required
+          />
         </div>
         <div class="form-control mt-6">
-          <button class="btn btn-primary" (click)="onSubmit()">Login</button>
+          <button class="btn btn-primary" (click)="onSubmit()">Register</button>
         </div>
         <div>
           <label class="label">
-            <a routerLink="/register" class="link-hover link label-text-alt">No account? Register</a>
+            <a routerLink="/login" class="link-hover link label-text-alt">Already have an account? Login</a>
           </label>
         </div>
       </form>
     </div>
     <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold">Login now!</h1>
+      <h1 class="text-5xl font-bold">Register Now!</h1>
       <p class="py-6">
-        In the ocean of knowledge, absorb nutrients, and grow! Let's embrace the AI era together! Sail towards the
-        stars!
+        Join us, start your AI journey! Explore the ocean of knowledge, grow in the wave of innovation!
       </p>
     </div>
   </div>
