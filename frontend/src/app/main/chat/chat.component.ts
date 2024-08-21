@@ -180,6 +180,7 @@ export class Chat implements OnInit, AfterViewChecked {
       model: this.selectedModel,
       temperature: this.temperature,
       history_length: this.historyLimit,
+      selected_prompt: this.globalStateService.selectedPrompt,
     };
 
     if (this.globalStateService.studioKnowledgeName) {

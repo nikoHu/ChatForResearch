@@ -79,6 +79,8 @@ export class Studio {
         console.error(error);
       },
     });
+
+    this.loadPrompts();
   }
 
   ngAfterViewInit() {
@@ -258,5 +260,43 @@ export class Studio {
 
   closePopup() {
     this.showPopup = false;
+  }
+
+  newPromptName: string = '';
+  newPromptContent: string = '';
+  prompts: { name: string; content: string }[] = [];
+  selectedPrompt: string = '';
+
+  loadPrompts() {
+    this.http.get<{ prompts: { name: string; content: string }[] }>(`${environment.apiUrl}/chat/prompts`).subscribe({
+      next: (response) => {
+        this.prompts = response.prompts;
+      },
+      error: (error) => {
+        console.error('Error fetching models:', error);
+      },
+    });
+  }
+
+  selectPrompt(content: string) {
+    this.selectedPrompt = content;
+    this.globalStateService.selectedPrompt = content;
+  }
+
+  addNewPrompt() {
+    if (this.newPromptName && this.newPromptContent) {
+      const newPrompt = { name: this.newPromptName, content: this.newPromptContent };
+      this.http.post(`${environment.apiUrl}/chat/add-prompt`, newPrompt).subscribe({
+        next: (response: any) => {
+          this.prompts.push(newPrompt);
+          this.newPromptName = '';
+          this.newPromptContent = '';
+          (document.getElementById('newPromptModal') as HTMLDialogElement).close();
+        },
+        error: (error) => {},
+      });
+    } else {
+      console.log('请填写提示词名称和内容。');
+    }
   }
 }

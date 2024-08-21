@@ -10,4 +10,5 @@ export class GlobalStateService {
   fileName: string = '';
   isBuilding: boolean = true;
   steps: boolean[] = [false, false];
+  selectedPrompt: string = '';
 }

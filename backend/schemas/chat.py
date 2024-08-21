@@ -9,6 +9,7 @@ class Chat(BaseModel):
     message: str
     temperature: float = Field(default=0.5)
     history_length: int = Field(default=50)
+    selected_prompt: str
 
 
 class KnowledgeChat(Chat):
@@ -19,6 +20,7 @@ class KnowledgeChat(Chat):
     message: str
     temperature: float = Field(default=0.5)
     history_length: int = Field(default=50)
+    selected_prompt: str
 
 
 class PdfChat(Chat):

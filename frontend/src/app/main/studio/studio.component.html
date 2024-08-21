@@ -31,14 +31,86 @@
       </div>
     } @else {
       <div class="flex flex-col self-start *:mx-auto *:my-5 *:w-4/5">
-        <label>
-          <span class="mb-2 block font-extrabold">提示词</span>
+        <div class="flex-col">
+          <div class="mb-3 flex items-center justify-between space-x-2">
+            <div class="text-lg font-extrabold">提示词</div>
+            <div class="flex items-center space-x-2">
+              <button
+                class="transform rounded-lg bg-blue-100 px-3 py-2 text-sm text-blue-500 transition duration-100 ease-in-out hover:scale-105 hover:bg-blue-200"
+                onclick="promptModal.showModal()"
+                (click)="loadPrompts()"
+              >
+                选择提示词
+              </button>
+              <button
+                class="transform rounded-lg bg-green-100 px-3 py-2 text-sm text-green-500 transition duration-100 ease-in-out hover:scale-105 hover:bg-green-200"
+                onclick="newPromptModal.showModal()"
+              >
+                新建提示词
+              </button>
+            </div>
+          </div>
           <textarea
             rows="10"
             class="textarea textarea-bordered block w-full resize-none"
             placeholder="在这里写你的提示词..."
+            [(ngModel)]="selectedPrompt"
           ></textarea>
-        </label>
+        </div>
+
+        <dialog id="promptModal" class="modal">
+          <div class="modal-box">
+            <h3 class="mb-5 text-lg font-bold">选择提示词</h3>
+            @for (prompt of prompts; track prompt) {
+              <div
+                class="mb-2 flex cursor-pointer items-center justify-between rounded-lg border p-3"
+                [class.bg-blue-50]="selectedPrompt === prompt.content"
+                (click)="selectPrompt(prompt.content)"
+                [class.hover:bg-blue-50]="selectedPrompt !== prompt.content"
+              >
+                <span class="text-sm">{{ prompt.name }}</span>
+              </div>
+            }
+            <div class="modal-action">
+              <form method="dialog">
+                <button class="btn">关闭</button>
+              </form>
+            </div>
+          </div>
+        </dialog>
+
+        <dialog id="newPromptModal" class="modal">
+          <div class="modal-box">
+            <h3 class="mb-5 text-lg font-bold">新建提示词</h3>
+            <input
+              type="text"
+              placeholder="提示词名称"
+              class="input input-bordered mb-3 w-full"
+              [(ngModel)]="newPromptName"
+            />
+            <textarea
+              rows="5"
+              class="textarea textarea-bordered mb-3 w-full resize-none"
+              placeholder="提示词内容"
+              [(ngModel)]="newPromptContent"
+            ></textarea>
+            <div class="modal-action">
+              <button
+                class="rounded-md border border-blue-600 bg-blue-500 px-4 py-2 font-semibold text-white shadow-sm transition-colors duration-300 hover:bg-blue-600"
+                (click)="addNewPrompt()"
+              >
+                保存
+              </button>
+              <button
+                class="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 shadow-sm transition-colors duration-300 hover:bg-gray-100"
+                onclick="newPromptModal.close()"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </dialog>
+
         <div class="flex h-fit items-center justify-between rounded-xl bg-base-200 px-3 py-2">
           <span class="font-extrabold">变量</span>
           <button class="whitespace-normal rounded-lg px-2 py-1 text-sm hover:bg-neutral">+ 添加</button>

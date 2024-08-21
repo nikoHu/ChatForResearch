@@ -59,6 +59,17 @@ def get_llm(model: str, temperature: float) -> ChatOllama:
 store: Dict[str, BaseChatMessageHistory] = {}
 store_pdf: Dict[str, str] = {}
 embeddings = OllamaEmbeddings(model=config["embedding_model"])
+prompts = [
+    {"name": "通用问答", "content": "你是一个智能助手，请回答用户的问题。"},
+    {
+        "name": "Python 错误检测器",
+        "content": "你的任务是分析提供的 Python 代码片段，识别其中存在的任何错误，并提供一个修正后的代码版本来解决这些问题。解释你在原始代码中发现的问题，以及你的修复如何解决它们。修正后的代码应该是功能性的、高效的，并遵循 Python 编程的最佳实践。",
+    },
+    {
+        "name": "Python 代码顾问",
+        "content": "你的任务是分析提供的 Python 代码片段，并提出优化其性能的改进建议。找出可以使代码更高效、更快或更节省资源的地方。提供具体的优化建议，并解释这些更改如何提高代码的性能。优化后的代码应保持与原始代码相同的功能，同时展示出更高的效率。",
+    },
+]
 
 
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
@@ -90,9 +101,14 @@ async def translate(text: str = Form(...)):
 @router.post("/completions")
 async def chat(item: Chat):
     llm = get_llm(item.model, item.temperature / 10)
+    system_message = (
+        item.selected_prompt
+        if item.selected_prompt
+        else "You are a helpful assistant. Answer all questions to the best of your ability."
+    )
     prompt = ChatPromptTemplate.from_messages(
         [
-            SystemMessage("You are a helpful assistant. Answer all questions to the best of your ability."),
+            SystemMessage(system_message),
             MessagesPlaceholder(variable_name="chat_history", n_messages=item.history_length),
         ]
     )
@@ -126,7 +142,7 @@ async def knowledge_chat(item: KnowledgeChat):
 
     retriever = vector_store.as_retriever(search_kwargs={"score_threshold": 0.5, "k": 3})
 
-    system_prompt = (
+    default_system_prompt = (
         "You are an assistant for question-answering tasks. "
         "Use the following pieces of retrieved context to answer "
         "the question. If you don't know the answer, say that you "
@@ -135,6 +151,15 @@ async def knowledge_chat(item: KnowledgeChat):
         "\n\n"
         "{context}"
     )
+
+    if item.selected_prompt:
+        system_prompt = (
+            item.selected_prompt
+            + "\n\n"
+            + default_system_prompt[default_system_prompt.index("Use the following pieces") :]
+        )
+    else:
+        system_prompt = default_system_prompt
 
     qa_prompt = ChatPromptTemplate.from_messages(
         [
@@ -271,3 +296,16 @@ async def load_history_chat(item: HistoryChat):
             history_chat.append({"id": i + 1, "role": "assistant", "content": message.content})
 
     return {"history_chat": history_chat}
+
+
+@router.get("/prompts")
+async def get_prompts():
+    return {"prompts": prompts}
+
+
+@router.post("/add-prompt")
+async def add_prompt(prompt: dict):
+    if "name" not in prompt or "content" not in prompt:
+        return {"error": "Prompt name and content are required"}
+    prompts.append(prompt)
+    return {"message": "Prompt added successfully"}
