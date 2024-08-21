@@ -309,3 +309,10 @@ async def add_prompt(prompt: dict):
         return {"error": "Prompt name and content are required"}
     prompts.append(prompt)
     return {"message": "Prompt added successfully"}
+
+
+@router.delete("/delete-prompt/{prompt_name}")
+async def delete_prompt(prompt_name: str):
+    global prompts
+    prompts = [prompt for prompt in prompts if prompt["name"] != prompt_name]
+    return {"message": "Prompt deleted successfully"}

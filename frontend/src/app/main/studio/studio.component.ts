@@ -279,8 +279,8 @@ export class Studio {
   }
 
   selectPrompt(content: string) {
-    this.selectedPrompt = content;
-    this.globalStateService.selectedPrompt = content;
+    this.selectedPrompt = this.selectedPrompt === content ? '' : content;
+    this.globalStateService.selectedPrompt = this.selectedPrompt;
   }
 
   addNewPrompt() {
@@ -298,5 +298,20 @@ export class Studio {
     } else {
       console.log('请填写提示词名称和内容。');
     }
+  }
+
+  deletePrompt(promptName: string) {
+    this.http.delete(`${environment.apiUrl}/chat/delete-prompt/${promptName}`).subscribe({
+      next: (response: any) => {
+        this.prompts = this.prompts.filter((prompt) => prompt.name !== promptName);
+        if (this.selectedPrompt === promptName) {
+          this.selectedPrompt = '';
+          this.globalStateService.selectedPrompt = '';
+        }
+      },
+      error: (error) => {
+        console.error('Error deleting prompt:', error);
+      },
+    });
   }
 }

@@ -1,4 +1,4 @@
-<div class="flex h-full w-full flex-row items-center justify-center">
+<div class="flex h-full w-full flex-row items-center justify-center overflow-x-hidden">
   <!--left panel-->
   <div #leftPanel [style.width.%]="leftWidth" class="h-full">
     @if (pdfSrc && !uploading) {
@@ -47,6 +47,12 @@
                 onclick="newPromptModal.showModal()"
               >
                 新建提示词
+              </button>
+              <button
+                class="transform rounded-lg bg-red-100 px-3 py-2 text-sm text-red-500 transition duration-100 ease-in-out hover:scale-105 hover:bg-red-200"
+                onclick="deletePromptModal.showModal()"
+              >
+                删除提示词
               </button>
             </div>
           </div>
@@ -107,6 +113,28 @@
               >
                 取消
               </button>
+            </div>
+          </div>
+        </dialog>
+
+        <dialog id="deletePromptModal" class="modal">
+          <div class="modal-box">
+            <h3 class="mb-5 text-lg font-bold">删除提示词</h3>
+            @for (prompt of prompts; track prompt) {
+              <div class="mb-2 flex items-center justify-between rounded-lg border p-3">
+                <span class="text-sm">{{ prompt.name }}</span>
+                <lucide-icon
+                  name="trash-2"
+                  class="cursor-pointer text-red-500"
+                  [size]="20"
+                  (click)="deletePrompt(prompt.name)"
+                ></lucide-icon>
+              </div>
+            }
+            <div class="modal-action">
+              <form method="dialog">
+                <button class="btn">关闭</button>
+              </form>
             </div>
           </div>
         </dialog>
