@@ -276,8 +276,7 @@ export class Chat implements OnInit, AfterViewChecked {
 
   openFile(source: string) {
     if (source) {
-      const [knowledgeName, filename] = source.split('/');
-      const url = `${environment}knowledge/${source}`;
+      const url = `${environment.apiUrl}/knowledge/${source}`;
       window.open(url, '_blank');
     }
   }
