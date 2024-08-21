@@ -7,6 +7,7 @@ from api import chat, knowledge, user
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 logger = structlog.get_logger()
 
@@ -22,6 +23,7 @@ def read_config(file_path):
 
 config = read_config("config.yaml")
 models = config["llm_models"]
+default_model = config["default_model"]
 ollama_url = config["ollama_url"]
 
 
@@ -61,13 +63,11 @@ async def unload_model(model_name, timeout=60):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时预加载模型
-    for model in models:
-        await preload_model(model)
+    # 启动时只预加载默认模型
+    await preload_model(default_model)
     yield
-    # 关闭时卸载模型
-    for model in models:
-        await unload_model(model)
+    # 关闭时卸载默认模型
+    await unload_model(default_model)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -92,6 +92,19 @@ app.add_middleware(
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
 app.include_router(user.router, prefix="/user", tags=["user"])
+
+class ModelName(BaseModel):
+    current_model: str
+
+@app.post("/models/load")
+async def load_model(model: ModelName):
+    await preload_model(model.current_model)
+    return {"message": f"Model {model.current_model} loaded successfully"}
+
+@app.post("/models/unload")
+async def unload_model_endpoint(model: ModelName):
+    await unload_model(model.current_model)
+    return {"message": f"Model {model.current_model} unloaded successfully"}
 
 if __name__ == "__main__":
     import uvicorn

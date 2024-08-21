@@ -1,10 +1,17 @@
 <div class="flex h-full w-full flex-col">
   <div class="relative flex w-full flex-grow flex-row rounded-2xl py-3 pl-3">
-    <select (change)="onSelectChange($event)" class="select select-sm">
-      @for (model of models; track model) {
-        <option [value]="model" [selected]="model === selectedModel">{{ model | uppercase }}</option>
+    <div class="flex items-center justify-center space-x-2">
+      <select (change)="onSelectChange($event)" class="select select-sm" [disabled]="isModelLoading">
+        @for (model of models; track model) {
+          <option [value]="model" [selected]="model === selectedModel">{{ model | uppercase }}</option>
+        }
+      </select>
+      @if (isModelLoading) {
+        <div class="absolute left-32 top-1/2 -translate-y-1/2">
+          <span class="loading loading-spinner loading-sm"></span>
+        </div>
       }
-    </select>
+    </div>
     <svg
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
@@ -79,7 +86,9 @@
                   <div>CITATIONS</div>
                   <hr class="w-full" />
                 </div>
-                <div class="w-fit rounded-lg bg-white p-2 cursor-pointer" (click)="openFile(message.url)">{{ message.source }}</div>
+                <div class="w-fit cursor-pointer rounded-lg bg-white p-2" (click)="openFile(message.url)">
+                  {{ message.source }}
+                </div>
               </div>
             }
           </div>

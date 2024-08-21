@@ -18,6 +18,7 @@ import { AuthService } from '../../services/auth.service';
 import { GlobalStateService } from '../../services/global-state.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
 interface HistoryChat {
   username: string;
@@ -45,6 +46,7 @@ export class Chat implements OnInit, AfterViewChecked {
   models = [];
   newMessage = '';
   loading = false;
+  isModelLoading = false;
   userScrolled = false;
   historyLimit = 50;
   temperature = 5;
@@ -112,8 +114,26 @@ export class Chat implements OnInit, AfterViewChecked {
     }
   }
 
-  onSelectChange(event: any): void {
-    this.selectedModel = event.target.value;
+  async onSelectChange(event: any): Promise<void> {
+    const newModel = event.target.value;
+    console.log('New model:', newModel);
+    this.isModelLoading = true;
+    try {
+      // Unload old model
+      if (this.selectedModel) {
+        await firstValueFrom(
+          this.http.post(`${environment.apiUrl}/models/unload`, { current_model: this.selectedModel }),
+        );
+      }
+      // Load new model
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/models/load`, { current_model: newModel }));
+      this.selectedModel = newModel;
+    } catch (error) {
+      console.error('Error switching model:', error);
+      // Handle error, might need to rollback to previous model or display error message
+    } finally {
+      this.isModelLoading = false;
+    }
   }
 
   sendMessage() {
