@@ -274,11 +274,14 @@ async def parser_pdf(file: UploadFile = File(...), username: str = Form(...)):
 @router.post("/reset-chat")
 async def reset_chat(item: ResetChat):
     session_id = f"{item.username}-{item.mode}"
-    pdf_session_id = f"{item.username}-{item.filename}"
     if session_id in store:
         del store[session_id]
-    if pdf_session_id in store_pdf:
-        del store_pdf[pdf_session_id]
+    
+    if item.filename:
+        pdf_session_id = f"{item.username}-{item.filename}"
+        if pdf_session_id in store_pdf:
+            del store_pdf[pdf_session_id]
+    
     return {"message": "Chat history has been reset."}
 
 

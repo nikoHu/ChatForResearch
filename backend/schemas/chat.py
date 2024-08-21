@@ -35,8 +35,8 @@ class PdfChat(Chat):
 
 class ResetChat(BaseModel):
     username: str
-    filename: str
     mode: str
+    filename: str | None = None
 
 
 class HistoryChat(BaseModel):

@@ -242,20 +242,23 @@ export class Chat implements OnInit, AfterViewChecked {
     });
   }
 
-  resetChat(username: string, mode: string): void {
+  resetChat(): void {
     const url = `${environment.apiUrl}/chat/reset-chat`;
-    const filename = this.pdfname;
+    const payload = {
+      username: this.username,
+      mode: this.mode,
+      filename: this.mode === 'studio_pdf' ? this.pdfname : undefined,
+    };
 
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-    });
-
-    this.http.post<any>(url, { username, mode, filename }, { headers }).subscribe({
+    this.http.post<any>(url, payload).subscribe({
       next: (response) => {
         console.log('Chat reset:', response);
+        this.messages = []; // 清空消息列表
+        // 可能需要重新初始化其他状态
       },
       error: (error) => {
-        console.error('Error fetching chat history:', error);
+        console.error('Error resetting chat:', error);
+        // 可以添加错误处理,比如显示一个错误提示
       },
     });
   }
