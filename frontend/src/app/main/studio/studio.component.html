@@ -1,6 +1,10 @@
-<div class="flex h-full w-full flex-row items-center justify-center overflow-x-hidden">
+<div class="flex h-full w-full flex-row items-center justify-center">
   <!--left panel-->
-  <div #leftPanel [style.width.%]="leftWidth" class="h-full">
+  <div
+    #leftPanel
+    [style.width.%]="leftWidth"
+    class="h-full overflow-y-auto scrollbar-thin scrollbar-track-neutral-200 scrollbar-thumb-neutral-500"
+  >
     @if (pdfSrc && !uploading) {
       <!-- PDF预览 -->
       <div class="flex h-full flex-col items-center justify-center">
