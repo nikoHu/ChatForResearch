@@ -162,7 +162,6 @@ export class Chat implements OnInit, AfterViewChecked {
   }
 
   private resetState() {
-    this.messages = [];
     this.loadHistoryChat(this.username, this.mode);
   }
 
