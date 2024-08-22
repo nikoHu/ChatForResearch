@@ -300,7 +300,8 @@ export class Studio {
     }
   }
 
-  deletePrompt(promptName: string) {
+  deletePrompt(promptName: string, event: Event) {
+    event.stopPropagation(); // 阻止事件冒泡，防止触发选择提示词
     this.http.delete(`${environment.apiUrl}/chat/delete-prompt/${promptName}`).subscribe({
       next: (response: any) => {
         this.prompts = this.prompts.filter((prompt) => prompt.name !== promptName);
