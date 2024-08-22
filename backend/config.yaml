@@ -1,5 +1,7 @@
 # Example
 
+default_model: llama3.1
+
 llm_models:
   - llama3.1
 
