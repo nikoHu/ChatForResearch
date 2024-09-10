@@ -134,6 +134,25 @@ export class Studio {
   back() {
     this.pdfSrc = '';
     this.studio_mode = 'studio_default';
+    this.resetChat();
+  }
+
+  resetChat(): void {
+    const url = `${environment.apiUrl}/chat/reset-chat`;
+    const payload = {
+      username: this.username,
+      mode: 'studio_pdf',
+      filename: this.pdfname,
+    };
+
+    this.http.post<any>(url, payload).subscribe({
+      next: (response) => {
+        console.log('Chat reset:', response);
+      },
+      error: (error) => {
+        console.error('Error resetting chat:', error);
+      },
+    });
   }
 
   pdfSrc: string | Uint8Array | null = null;
