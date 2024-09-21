@@ -21,6 +21,20 @@
 
 ### 安装
 
+#### 在开始之前，请确保您已配置以下环境：
+
+- [Node.js](https://nodejs.org/): 版本 18 或更高版本。
+- pnpm: 使用以下命令安装：
+  ```sh
+  npm install -g pnpm
+  ```
+- Angular CLI: 使用以下命令安装：
+  ```sh
+  npm install -g @angular/cli
+  ```
+
+#### 步骤：
+
 1. **克隆仓库:**
 
    ```sh
